@@ -1,0 +1,29 @@
+# ── Node / build ──────────────────────────────────────────────────────────
+node_modules/
+dist/
+coverage/
+*.tgz
+*.tsbuildinfo
+
+# ── Local runtime data (never commit real configs or secrets) ─────────────
+/config.json
+*.pw
+*.token
+backups/
+state/
+
+# ── AI agent files and folders (recreate locally, see README "For LLMs") ──
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
+.claude/
+AGENTS.md
+AGENTS.override.md
+**/AGENTS.md
+.agents/
+
+# ── Editors / OS ──────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+.DS_Store

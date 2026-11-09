@@ -1,0 +1,70 @@
+{
+  "name": "backup-manager",
+  "version": "0.1.0",
+  "description": "Back up MariaDB databases and Laravel storage per environment, with a full-screen terminal UI and a user-level systemd scheduler.",
+  "license": "MIT",
+  "author": "MateusBMP",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MateusBMP/backup-manager.git"
+  },
+  "bin": {
+    "bkm": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "config.schema.json",
+    "config.example.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.tsx",
+    "build": "tsup",
+    "schema": "tsx scripts/schema.ts",
+    "schema:check": "tsx scripts/schema.ts --check",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "verify": "npm run schema:check && npm run typecheck && npm run lint && npm run coverage && npm run build",
+    "prepare": "husky || true"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs,json,jsonc}": "biome check --write --no-errors-on-unmatched"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.6",
+    "@hono/swagger-ui": "^0.6.2",
+    "@hono/zod-openapi": "^1.6.3",
+    "commander": "^15.1.0",
+    "croner": "^11.0.0",
+    "hono": "^4.13.17",
+    "ink": "^8.0.0",
+    "ink-gradient": "^4.0.1",
+    "picomatch": "^4.0.7",
+    "react": "^19.3.1",
+    "tar": "^7.5.22",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.6",
+    "@types/node": "^24.19.2",
+    "@types/picomatch": "^4.0.3",
+    "@types/react": "^19.3.0",
+    "@vitest/coverage-v8": "^5.1.0",
+    "husky": "^9.1.7",
+    "ink-testing-library": "^4.0.0",
+    "lint-staged": "^17.6.0",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

@@ -1,0 +1,372 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/MateusBMP/backup-manager/main/config.schema.json",
+  "title": "backup-manager configuration",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "default": 1,
+      "description": "Config format version.",
+      "type": "number",
+      "const": 1
+    },
+    "settings": {
+      "default": {
+        "compressLevel": 6,
+        "autoPrune": true,
+        "maxConcurrentJobs": 1
+      },
+      "type": "object",
+      "properties": {
+        "backupDir": {
+          "description": "Root directory for backups. Default: $XDG_DATA_HOME/backup-manager/backups.",
+          "type": "string",
+          "minLength": 1
+        },
+        "stateDir": {
+          "description": "Directory for jobs, logs, locks and schedule state. Default: $XDG_STATE_HOME/backup-manager.",
+          "type": "string",
+          "minLength": 1
+        },
+        "compressLevel": {
+          "default": 6,
+          "description": "gzip compression level for dumps and archives (1 fastest … 9 smallest).",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9
+        },
+        "autoPrune": {
+          "default": true,
+          "description": "Apply the retention policy after every successful backup.",
+          "type": "boolean"
+        },
+        "timezone": {
+          "description": "IANA timezone for schedules, e.g. 'America/Sao_Paulo'. Default: the system timezone.",
+          "type": "string",
+          "minLength": 1
+        },
+        "maxConcurrentJobs": {
+          "default": 1,
+          "description": "Maximum scheduled jobs the daemon runs at the same time.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16
+        }
+      },
+      "additionalProperties": false,
+      "description": "Global settings."
+    },
+    "retention": {
+      "default": {
+        "keepLast": 7,
+        "keepDays": 30
+      },
+      "type": "object",
+      "properties": {
+        "keepLast": {
+          "default": 7,
+          "description": "Keep the newest N complete backups (0 disables this rule).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "keepDays": {
+          "default": 30,
+          "description": "Keep complete backups younger than N days (0 disables this rule).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "additionalProperties": false,
+      "description": "Retention policy. A backup is kept when either rule keeps it."
+    },
+    "api": {
+      "default": {
+        "enabled": true,
+        "host": "127.0.0.1",
+        "port": 8080
+      },
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "default": true,
+          "description": "Serve the read-only HTTP API from the daemon.",
+          "type": "boolean"
+        },
+        "host": {
+          "default": "127.0.0.1",
+          "description": "Address to bind.",
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "default": 8080,
+          "description": "TCP port.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "token": {
+          "description": "Bearer token required by every route except /health, /docs and /openapi.json.",
+          "type": "string",
+          "minLength": 1
+        },
+        "tokenFile": {
+          "description": "File containing the bearer token (alternative to token).",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "description": "Read-only HTTP API served by `bkm daemon`."
+    },
+    "environments": {
+      "default": [],
+      "description": "Environments, in display order.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 64,
+            "pattern": "^[a-z0-9][a-z0-9_-]*$",
+            "description": "Environment name: lowercase letters, digits, '-' and '_'."
+          },
+          "schedule": {
+            "description": "Cron expression (5 or 6 fields) for automatic backups. Omit for manual only.",
+            "type": "string",
+            "minLength": 1
+          },
+          "backupDir": {
+            "description": "Backup directory used as-is. Default: <settings.backupDir>/<name>.",
+            "type": "string",
+            "minLength": 1
+          },
+          "retention": {
+            "type": "object",
+            "properties": {
+              "keepLast": {
+                "description": "Overrides the global keepLast.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "keepDays": {
+                "description": "Overrides the global keepDays.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "additionalProperties": false,
+            "description": "Per-environment retention override."
+          },
+          "projects": {
+            "default": [],
+            "description": "Laravel projects whose storage is archived.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "pattern": "^[a-z0-9][a-z0-9_-]*$",
+                  "description": "Project name: lowercase letters, digits, '-' and '_'."
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Absolute path to the Laravel project root (the directory with artisan)."
+                },
+                "include": {
+                  "default": [
+                    "storage/app"
+                  ],
+                  "description": "Directories to archive, relative to the project root.",
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "exclude": {
+                  "default": [
+                    "storage/framework/{cache,sessions,views}/**",
+                    "storage/logs/**",
+                    "**/.gitignore"
+                  ],
+                  "description": "Glob patterns (relative to the project root) to leave out. 'dir/**' keeps the empty directory.",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "required": [
+                "name",
+                "path"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "databases": {
+            "default": [],
+            "description": "Databases dumped with mariadb-dump.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "maxLength": 64,
+                  "pattern": "^[a-z0-9][a-z0-9_-]*$",
+                  "description": "Database name: lowercase letters, digits, '-' and '_'."
+                },
+                "source": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "laravel"
+                        },
+                        "project": {
+                          "type": "string",
+                          "maxLength": 64,
+                          "pattern": "^[a-z0-9][a-z0-9_-]*$",
+                          "description": "Project (in the same environment) whose .env provides DB_* values."
+                        },
+                        "host": {
+                          "description": "Server host.",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "port": {
+                          "description": "Server port.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 65535
+                        },
+                        "socket": {
+                          "description": "Unix socket path (instead of host/port).",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "user": {
+                          "description": "User name.",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "password": {
+                          "description": "Password. Prefer passwordFile.",
+                          "type": "string"
+                        },
+                        "passwordFile": {
+                          "description": "File containing the password (first line).",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "database": {
+                          "description": "Overrides DB_DATABASE.",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "project"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Read the connection from a Laravel project's .env; any field set here wins."
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "connection"
+                        },
+                        "host": {
+                          "description": "Server host.",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "port": {
+                          "description": "Server port.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 65535
+                        },
+                        "socket": {
+                          "description": "Unix socket path (instead of host/port).",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "user": {
+                          "description": "User name.",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "password": {
+                          "description": "Password. Prefer passwordFile.",
+                          "type": "string"
+                        },
+                        "passwordFile": {
+                          "description": "File containing the password (first line).",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "schemas": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "description": "Schemas (databases) to dump into one file."
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "schemas"
+                      ],
+                      "additionalProperties": false,
+                      "description": "An explicit MariaDB/MySQL connection."
+                    }
+                  ]
+                },
+                "extraArgs": {
+                  "default": [],
+                  "description": "Extra arguments for mariadb-dump, e.g. ['--ignore-table=app.sessions'].",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "name",
+                "source"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://raw.githubusercontent.com/MateusBMP/backup-manager/main/config.schema.json",
+  "version": 1,
+  "settings": {
+    "backupDir": "~/backups",
+    "compressLevel": 9,
+    "timezone": "America/Sao_Paulo"
+  },
+  "retention": { "keepLast": 14, "keepDays": 30 },
+  "api": { "host": "127.0.0.1", "port": 8080, "tokenFile": "~/.config/backup-manager/api.token" },
+  "environments": [
+    {
+      "name": "production",
+      "schedule": "30 3 * * *",
+      "projects": [
+        {
+          "name": "shop",
+          "path": "/var/www/shop",
+          "include": ["storage/app"],
+          "exclude": [
+            "storage/framework/{cache,sessions,views}/**",
+            "storage/logs/**",
+            "**/.gitignore"
+          ]
+        }
+      ],
+      "databases": [
+        { "name": "shop", "source": { "type": "laravel", "project": "shop" } },
+        {
+          "name": "reporting",
+          "source": {
+            "type": "connection",
+            "host": "127.0.0.1",
+            "user": "backup",
+            "passwordFile": "~/.config/backup-manager/reporting.pw",
+            "schemas": ["reports", "reports_archive"]
+          },
+          "extraArgs": ["--ignore-table=reports.cache"]
+        }
+      ]
+    },
+    {
+      "name": "staging",
+      "retention": { "keepLast": 3 },
+      "projects": [{ "name": "shop", "path": "/var/www/staging-shop" }],
+      "databases": [{ "name": "shop", "source": { "type": "laravel", "project": "shop" } }]
+    }
+  ]
+}

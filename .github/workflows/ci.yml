@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FORCE_COLOR: "1"
+
+jobs:
+  lint:
+    name: lint, types & schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run schema:check
+
+  test:
+    name: tests (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24, 26]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run coverage
+      - uses: actions/upload-artifact@v4
+        if: matrix.node == 24
+        with:
+          name: coverage
+          path: coverage/lcov.info
+
+  integration:
+    name: integration (MariaDB 11)
+    needs: test
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      BKM_IT_DB_HOST: 127.0.0.1
+      BKM_IT_DB_PORT: "3306"
+      BKM_IT_DB_USER: root
+      BKM_IT_DB_PASSWORD: root
+      BKM_IT_DB_CREATE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install the MariaDB client
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mariadb-client
+      - run: npm ci
+      - run: npm run test:integration
+
+  build:
+    name: build, pack & smoke test
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm pack
+      - name: Install the package into a temp prefix and run the CLI
+        run: |
+          prefix="$(mktemp -d)"
+          npm install -g --prefix "$prefix" ./backup-manager-*.tgz
+          bkm="$prefix/bin/bkm"
+          "$bkm" --help
+          "$bkm" --version
+          set +e
+          "$bkm" -c /nonexistent/config.json doctor; code=$?
+          set -e
+          test "$code" -eq 2
+          cfg="$(mktemp -d)/config.json"
+          printf '{"settings":{"backupDir":"%s"},"environments":[{"name":"ci","schedule":"30 3 * * *"}]}\n' "$(mktemp -d)" > "$cfg"
+          set +e
+          "$bkm" -c "$cfg" doctor --no-db > doctor.txt; code=$?
+          cat doctor.txt
+          timeout -s TERM 5 "$bkm" -c "$cfg" daemon > daemon.txt 2>&1
+          cat daemon.txt
+          set -e
+          test "$code" -le 1
+          grep -q "is valid" doctor.txt
+          grep -q "ready: ci next" daemon.txt
+          grep -q "stopped" daemon.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: backup-manager-*.tgz
