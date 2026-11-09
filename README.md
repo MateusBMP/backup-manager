@@ -407,7 +407,7 @@ JSON config validated by zod. npm.
 ## Conventions
 
 - Ink: colors only from `ui/theme.ts`; gate every `useInput` with `isActive` (`useScreenActive()`); forms take the keyboard via `useCaptureKeys`; size from the App context (`width`/`height`), not ad-hoc.
-- Tests: vitest + ink-testing-library (100 columns; send a no-op key after mount and wait before keys). Temp dirs via `tests/helpers.ts`; fake `mariadb-dump` (`installFakeDump`) and fake systemd (`fakeSystemd`).
+- Tests: vitest + ink-testing-library (100 columns; send a no-op key after mount and wait before keys; match frames after `stripVTControlCharacters`, since CI forces color). Temp dirs via `tests/helpers.ts`; fake `mariadb-dump` (`installFakeDump`) and fake systemd (`fakeSystemd`).
 - Every behavior change needs tests; keep README (and this block) in sync in the same change.
 
 ## Safety

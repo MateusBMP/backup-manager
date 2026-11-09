@@ -1,5 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { stripVTControlCharacters } from "node:util";
 import { render } from "ink-testing-library";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { runBackup } from "../../src/core/backup/pipeline.js";
@@ -80,7 +81,8 @@ async function mount(services: Services, size = { columns: 100, rows: 30 }) {
       intervals={{ service: 200, jobs: 200 }}
     />,
   );
-  const frame = () => r.lastFrame() ?? "";
+  // Strip ANSI so matching is identical whether or not color is forced (CI sets FORCE_COLOR=1).
+  const frame = () => stripVTControlCharacters(r.lastFrame() ?? "");
   // ink-testing-library drops the very first keystroke after mount (a real pty does not),
   // so prime input with a key no handler uses (F12).
   await waitFor(() => frame().includes("backup-manager") || frame().includes("too small"));
