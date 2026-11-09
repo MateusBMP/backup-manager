@@ -4,10 +4,21 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
   - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
     groups:
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
       dev-tools:
         dependency-type: development
+    ignore:
+      # Types track the oldest supported Node (engines: >=22); bump the major by hand.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]

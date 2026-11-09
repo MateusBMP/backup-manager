@@ -346,7 +346,11 @@ npm run verify            # schema check + typecheck + lint + coverage + build (
   `npm run verify` and blocks the push if it fails.
 - **CI** runs on pushes to `main`, on PRs and manually. Jobs: lint/types/schema; tests on
   Node 22, 24 and 26; integration against a MariaDB 11 service; and pack + install +
-  CLI smoke test (`--help`, `doctor`, a short `daemon` run). Dependabot updates npm packages and actions weekly.
+  CLI smoke test (`--help`, `doctor`, a short `daemon` run). **CodeQL** (`security-extended`)
+  scans the TypeScript and the workflows on pushes, PRs and weekly.
+- **Dependabot** updates npm packages and actions weekly (dev tools in one PR) and groups
+  security updates into one PR per ecosystem. `@types/node` majors are bumped by hand, since
+  they track the oldest supported Node. Dependabot malware alerts are enabled in the repo settings.
 - **Integration tests** run only when a database is configured:
   `BKM_IT_DB_HOST`/`PORT`/`USER`/`PASSWORD` (or `BKM_IT_DB_SOCKET`) and `BKM_IT_DB_NAME`
   (default `bkm_it`). `BKM_IT_DB_CREATE=1` creates the schema and a table first. Without it,
