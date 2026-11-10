@@ -30,6 +30,12 @@ export interface InstallResult {
   changed: boolean;
 }
 
+/** Adds what to do when systemctl cannot reach a user manager at all. */
+export function busHint(message: string, user: string): string {
+  if (!/Failed to connect to bus|XDG_RUNTIME_DIR not defined/i.test(message)) return message;
+  return `${message} — no systemd user session for ${user}: log in as ${user} directly (e.g. \`ssh ${user}@host\`, not \`su\`/\`sudo -u\`), or have an administrator run \`loginctl enable-linger ${user}\` once, then retry`;
+}
+
 export class ServiceError extends Error {
   override name = "ServiceError";
 }
@@ -96,7 +102,10 @@ export class ServiceManager {
     if (show.code !== 0) {
       return {
         ...base,
-        error: (show.stderr || show.stdout).trim() || `systemctl exited with ${show.code}`,
+        error: busHint(
+          (show.stderr || show.stdout).trim() || `systemctl exited with ${show.code}`,
+          this.user,
+        ),
       };
     }
     const p = parseProperties(show.stdout);

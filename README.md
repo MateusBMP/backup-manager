@@ -145,6 +145,11 @@ journalctl --user -u bkm -f      # scheduler and job log
   boot and keep running after you log out. On most systems this needs no root. If your
   system refuses it, the install still succeeds, with a warning that the service only runs
   while you are logged in.
+- **No user session (`su`, `sudo -u`, some SSH setups):** `systemctl --user` needs
+  `XDG_RUNTIME_DIR`. If it is missing, bkm takes it (and the D-Bus address) from
+  `/run/user/<uid>` itself. If no user manager is running at all, the error says so: log in
+  as that user directly (`ssh user@host`), or have an administrator run
+  `sudo loginctl enable-linger <user>` once, then retry.
 - **Upgrades:** the unit stores absolute paths to `node` and `bkm`. If either one moves
   (an nvm upgrade or a reinstall), `bkm doctor` and the UI flag the unit as **outdated**.
   Choose **Install / update** on the Service screen to rewrite it.
@@ -467,7 +472,7 @@ JSON config validated by zod. npm.
 - Backups: `core/backup/pipeline.ts` (one env; `.tmp-<id>` → manifest → rename; auto-prune), `mariadb.ts`, `archive.ts`, `catalog.ts`, `retention.ts` (pure), `prune.ts`, `lock.ts`.
 - Jobs: `core/jobs/store.ts` (JSON status), `events.ts` (NDJSON), `runner.ts` (`startJob` spawns `bkm __job`: detached from the UI, a normal child from the daemon; `executeJob` runs it).
 - Daemon: `core/daemon/` (scheduler, catch-up via `schedule.json`, reload on file change or SIGHUP, graceful stop) + `src/api/server.ts`.
-- systemd: `core/service/` — every systemctl/journalctl/loginctl call goes through the injectable `CommandRunner` in `systemctl.ts`, always `--user`, never sudo, never a shell.
+- systemd: `core/service/` — every systemctl/journalctl/loginctl call goes through the injectable `CommandRunner` in `systemctl.ts`, always `--user`, never sudo, never a shell; `execRunner` fills a missing `XDG_RUNTIME_DIR`/`DBUS_SESSION_BUS_ADDRESS` from `/run/user/<uid>` (`userBusEnv`).
 - UI: `src/ui/App.tsx` (frame, routing, global keys, toasts, modals), `screens/`, `components/` (Form, TextField, ScrollList/ScrollView, Panel), `hooks/` (usePolling, useJobEvents). `ui/print/` renders doctor output for the CLI.
 
 ## Conventions

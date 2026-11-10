@@ -101,7 +101,13 @@ import type { CommandResult, CommandRunner } from "../src/core/service/systemctl
 
 /** In-memory systemd: records argv and simulates unit state. Never runs real commands. */
 export function fakeSystemd(
-  options: { available?: boolean; lingerAllowed?: boolean; linger?: boolean } = {},
+  options: {
+    available?: boolean;
+    lingerAllowed?: boolean;
+    linger?: boolean;
+    /** stderr when `available` is false */
+    busError?: string;
+  } = {},
 ) {
   const state = {
     available: options.available ?? true,
@@ -119,7 +125,8 @@ export function fakeSystemd(
     calls.push([command, ...args]);
     if (command === "systemctl") {
       if (args[0] !== "--user") throw new Error("systemctl must always be called with --user");
-      if (!state.available) return fail("Failed to connect to bus: No medium found");
+      if (!state.available)
+        return fail(options.busError ?? "Failed to connect to bus: No medium found");
       const [verb, ...rest] = args.slice(1);
       switch (verb) {
         case "show":

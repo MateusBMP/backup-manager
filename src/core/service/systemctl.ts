@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
 
 export interface CommandResult {
   code: number;
@@ -9,12 +10,34 @@ export interface CommandResult {
 /** Runs a program without a shell. Injected so tests never touch the real systemd. */
 export type CommandRunner = (command: string, args: string[]) => Promise<CommandResult>;
 
+/**
+ * `systemctl --user` needs XDG_RUNTIME_DIR (and D-Bus) to reach the user manager. Shells opened
+ * with `su`, `sudo -u` or SSH without pam_systemd lack them even when the manager runs at
+ * /run/user/<uid>, so fill them in from there. Existing values are kept; `env` is not mutated.
+ */
+export function userBusEnv(
+  env: NodeJS.ProcessEnv = process.env,
+  uid: number | null = process.getuid?.() ?? null,
+  exists: (p: string) => boolean = existsSync,
+): NodeJS.ProcessEnv {
+  const out = { ...env };
+  if (!out.XDG_RUNTIME_DIR && uid !== null) {
+    const dir = `/run/user/${uid}`;
+    if (exists(dir)) out.XDG_RUNTIME_DIR = dir;
+  }
+  if (!out.DBUS_SESSION_BUS_ADDRESS && out.XDG_RUNTIME_DIR) {
+    const bus = `${out.XDG_RUNTIME_DIR}/bus`;
+    if (exists(bus)) out.DBUS_SESSION_BUS_ADDRESS = `unix:path=${bus}`;
+  }
+  return out;
+}
+
 export const execRunner: CommandRunner = (command, args) =>
   new Promise((resolve) => {
     execFile(
       command,
       args,
-      { timeout: 30_000, maxBuffer: 4 * 1024 * 1024 },
+      { timeout: 30_000, maxBuffer: 4 * 1024 * 1024, env: userBusEnv() },
       (error, stdout, stderr) => {
         const err = error as (NodeJS.ErrnoException & { code?: number | string }) | null;
         if (err && err.code === "ENOENT") {

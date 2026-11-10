@@ -1,8 +1,8 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, test } from "vitest";
-import { ServiceError, ServiceManager } from "../../src/core/service/manager.js";
-import { execRunner, parseProperties } from "../../src/core/service/systemctl.js";
+import { busHint, ServiceError, ServiceManager } from "../../src/core/service/manager.js";
+import { execRunner, parseProperties, userBusEnv } from "../../src/core/service/systemctl.js";
 import { quoteArg, renderUnit, unitPath } from "../../src/core/service/unit.js";
 import { fakeSystemd, tempDir } from "../helpers.js";
 
@@ -111,6 +111,36 @@ describe("service manager", () => {
     ]);
     await expect(stat(m.unitFile)).rejects.toThrow();
     expect((await stat(dir)).isDirectory()).toBe(true);
+  });
+
+  test("missing user bus env gets an actionable hint", async () => {
+    const busError =
+      "Failed to connect to bus: $DBUS_SESSION_BUS_ADDRESS and $XDG_RUNTIME_DIR not defined (consider using --machine=<user>@.host --user to connect to bus of other user)";
+    const { m } = await manager({ available: false, busError });
+    const status = await m.status();
+    expect(status.error).toContain(busError);
+    expect(status.error).toMatch(/ssh alice@host/);
+    expect(status.error).toMatch(/loginctl enable-linger alice/);
+    await expect(m.install()).rejects.toThrow(/enable-linger alice/);
+    expect(busHint("Unit bkm.service not found.", "alice")).toBe("Unit bkm.service not found.");
+  });
+
+  test("userBusEnv fills the user bus from /run/user/<uid> without overwriting", () => {
+    const all = (p: string) => p === "/run/user/1000" || p === "/run/user/1000/bus";
+    const input = { PATH: "/bin" };
+    expect(userBusEnv(input, 1000, all)).toEqual({
+      PATH: "/bin",
+      XDG_RUNTIME_DIR: "/run/user/1000",
+      DBUS_SESSION_BUS_ADDRESS: "unix:path=/run/user/1000/bus",
+    });
+    expect(input).toEqual({ PATH: "/bin" });
+    expect(userBusEnv({}, 1000, (p) => p === "/run/user/1000")).toEqual({
+      XDG_RUNTIME_DIR: "/run/user/1000",
+    });
+    expect(userBusEnv({}, 1000, () => false)).toEqual({});
+    expect(userBusEnv({}, null, () => true)).toEqual({});
+    const set = { XDG_RUNTIME_DIR: "/x", DBUS_SESSION_BUS_ADDRESS: "unix:path=/y" };
+    expect(userBusEnv(set, 1000, () => true)).toEqual(set);
   });
 
   test("execRunner reports missing programs and exit codes without a shell", async () => {
