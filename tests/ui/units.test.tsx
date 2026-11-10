@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from "node:util";
 import { render } from "ink-testing-library";
 import { useState } from "react";
 import { describe, expect, test } from "vitest";
@@ -345,12 +346,13 @@ describe("button bar", () => {
         </Provider>,
       );
     const plain = view(false);
-    expect(plain.lastFrame()).toContain("↑↓ move  a add  q quit");
+    expect(stripVTControlCharacters(plain.lastFrame() ?? "")).toContain("↑↓ move  a add  q quit");
     plain.unmount();
     const bar = view(true);
-    expect(bar.lastFrame()).toContain("[ add ] [ quit ]");
-    expect(bar.lastFrame()).toContain("esc back");
-    expect(bar.lastFrame()).not.toContain("move");
+    const frame = stripVTControlCharacters(bar.lastFrame() ?? "");
+    expect(frame).toContain("[ add ] [ quit ]");
+    expect(frame).toContain("esc back");
+    expect(frame).not.toContain("move");
     bar.unmount();
   });
 
