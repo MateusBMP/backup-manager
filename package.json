@@ -1,6 +1,6 @@
 {
   "name": "@mateusbmp/backup-manager",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Back up MariaDB databases and Laravel storage per environment, with a full-screen terminal UI and a user-level systemd scheduler.",
   "keywords": [
     "backup",
