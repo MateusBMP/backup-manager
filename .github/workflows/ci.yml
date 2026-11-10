@@ -8,7 +8,8 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel a run on main: it may be staging a release on npm.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -98,10 +99,10 @@ jobs:
       - name: Install the package into a temp prefix and run the CLI
         run: |
           prefix="$(mktemp -d)"
-          npm install -g --prefix "$prefix" ./backup-manager-*.tgz
+          npm install -g --prefix "$prefix" ./mateusbmp-backup-manager-*.tgz
           bkm="$prefix/bin/bkm"
           "$bkm" --help
-          "$bkm" --version
+          test "$("$bkm" --version)" = "$(node -p 'require("./package.json").version')"
           set +e
           "$bkm" -c /nonexistent/config.json doctor; code=$?
           set -e
@@ -121,4 +122,52 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: package
-          path: backup-manager-*.tgz
+          path: mateusbmp-backup-manager-*.tgz
+
+  stage:
+    name: stage on npm
+    needs: [lint, test, integration, build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: write # push the vX.Y.Z tag and create the draft GitHub Release
+      id-token: write # npm trusted publishing (OIDC) and provenance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci
+      - name: Is package.json's version new on npm?
+        id: check
+        run: npm run release:check
+      - name: Download the smoke-tested tarball
+        if: steps.check.outputs.stage == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: package
+      - name: Use an npm with staged publishing
+        if: steps.check.outputs.stage == 'true'
+        run: npm install -g npm@^11.20.0
+      - name: Stage (approve later with `npm stage approve`)
+        if: steps.check.outputs.stage == 'true'
+        env:
+          TAG: ${{ steps.check.outputs.tag }}
+        # Provenance is only possible in CI, so it is requested here, not in publishConfig.
+        run: npm stage publish ./mateusbmp-backup-manager-*.tgz --tag "$TAG" --provenance
+      - name: Tag and draft the GitHub Release
+        if: steps.check.outputs.stage == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.check.outputs.version }}
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          # The tag marks the version as staged, so later pushes do not stage it again.
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/v$VERSION" -f sha="$GITHUB_SHA"
+          flags=()
+          if [ "$TAG" = next ]; then flags+=(--prerelease); fi
+          gh release create "v$VERSION" --verify-tag --draft --title "v$VERSION" \
+            --generate-notes "${flags[@]}" ./mateusbmp-backup-manager-*.tgz

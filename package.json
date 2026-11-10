@@ -1,13 +1,26 @@
 {
-  "name": "backup-manager",
+  "name": "@mateusbmp/backup-manager",
   "version": "0.1.1",
   "description": "Back up MariaDB databases and Laravel storage per environment, with a full-screen terminal UI and a user-level systemd scheduler.",
+  "keywords": [
+    "backup",
+    "mariadb",
+    "mysql",
+    "laravel",
+    "systemd",
+    "cli",
+    "tui"
+  ],
   "license": "MIT",
   "author": "MateusBMP",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MateusBMP/backup-manager.git"
+  },
+  "homepage": "https://github.com/MateusBMP/backup-manager#readme",
+  "bugs": {
+    "url": "https://github.com/MateusBMP/backup-manager/issues"
   },
   "bin": {
     "bkm": "dist/cli.js"
@@ -22,6 +35,9 @@
   "engines": {
     "node": ">=22"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "tsx src/cli.tsx",
     "build": "tsup",
@@ -34,7 +50,9 @@
     "coverage": "vitest run --coverage",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "verify": "npm run schema:check && npm run typecheck && npm run lint && npm run coverage && npm run build",
-    "prepare": "husky || true"
+    "prepare": "husky || true",
+    "prepack": "npm run build",
+    "release:check": "tsx scripts/release-check.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,json,jsonc}": "biome check --write --no-errors-on-unmatched"

@@ -1,6 +1,7 @@
 # backup-manager
 
 [![CI](https://github.com/MateusBMP/backup-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/MateusBMP/backup-manager/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@mateusbmp/backup-manager)](https://www.npmjs.com/package/@mateusbmp/backup-manager)
 
 `bkm` backs up **MariaDB databases** and **Laravel `storage/` directories**, grouped by
 **environment**. You manage everything from one full-screen terminal UI. That includes environments,
@@ -93,10 +94,16 @@ If every item fails, nothing is kept.
 ## Installation
 
 ```bash
+npm install -g @mateusbmp/backup-manager   # puts `bkm` on your PATH
+```
+
+From source:
+
+```bash
 git clone https://github.com/MateusBMP/backup-manager.git
 cd backup-manager
 npm ci && npm run build
-npm install -g .          # puts `bkm` on your PATH
+npm install -g .
 ```
 
 ## First run
@@ -346,7 +353,8 @@ npm run verify            # schema check + typecheck + lint + coverage + build (
   `npm run verify` and blocks the push if it fails.
 - **CI** runs on pushes to `main`, on PRs and manually. Jobs: lint/types/schema; tests on
   Node 22, 24 and 26; integration against a MariaDB 11 service; and pack + install +
-  CLI smoke test (`--help`, `doctor`, a short `daemon` run). **CodeQL** (`security-extended`)
+  CLI smoke test (`--help`, `--version`, `doctor`, a short `daemon` run). On pushes to `main`,
+  a final **stage** job runs once all of those pass (see *Releasing*). **CodeQL** (`security-extended`)
   scans the TypeScript and the workflows on pushes, PRs and weekly.
 - **Dependabot** updates npm packages and actions weekly (dev tools in one PR) and groups
   security updates into one PR per ecosystem. `@types/node` majors are bumped by hand, since
@@ -358,6 +366,52 @@ npm run verify            # schema check + typecheck + lint + coverage + build (
   `BKM_IT_DB_SOCKET=/run/mysqld/mysqld.sock BKM_IT_DB_NAME=test npm run test:integration`.
 - Tests never touch real systemd (a fake runner is injected) or real databases (a fake
   `mariadb-dump` is put on `PATH`), except the opt-in integration tests.
+
+### Releasing
+
+The package is published to npm as
+[`@mateusbmp/backup-manager`](https://www.npmjs.com/package/@mateusbmp/backup-manager).
+CI never makes a version public on its own. It **stages** the release with
+`npm stage publish`, and you approve it with 2FA.
+
+1. Bump `version` in `package.json` (e.g. `npm version patch --no-git-tag-version`, since CI
+   creates the tag), commit and push to `main`.
+2. When every CI job is green, the `stage` job in `ci.yml` runs `npm run release:check`
+   (`scripts/release-check.ts`). It stages only when the version is not on npm yet, has no
+   `vX.Y.Z` git tag, and is greater than the current `latest`. A prerelease such as
+   `1.2.0-beta.1` gets the `next` dist-tag. The job stages the exact tarball that passed the smoke
+   test, with provenance. It then pushes the `vX.Y.Z` tag, which marks the version as staged so
+   later pushes skip it, and creates a **draft** GitHub Release with generated notes. Pushes that
+   don't change the version stage nothing.
+3. Review and approve:
+
+   ```bash
+   npm stage list @mateusbmp/backup-manager   # find the stage id
+   npm stage download <stage-id>              # optional: inspect the tarball
+   npm stage approve <stage-id>               # publishes it (asks for 2FA)
+   ```
+
+   Then publish the draft GitHub Release. To drop a staged version instead, run
+   `npm stage reject <stage-id>`, delete the draft release and the `vX.Y.Z` tag, and bump again
+   (or push a fix and re-run CI).
+
+One-time setup:
+
+1. Publish the first version manually, because npm only stages versions of packages that
+   already exist: `npm login && npm publish` from a clean `main` checkout (`prepack` builds
+   `dist/`). Until then, the `stage` job skips with a notice.
+2. Create a GitHub environment named `npm` (Settings → Environments).
+3. On npmjs.com → package → Settings → **Trusted publishing**, add GitHub Actions with owner
+   `MateusBMP`, repository `backup-manager`, workflow `ci.yml` and environment `npm`. Allow only
+   **stage publish**, not publish. From the terminal:
+
+   ```bash
+   npm trust github @mateusbmp/backup-manager --file ci.yml \
+     --repository MateusBMP/backup-manager --environment npm --allow-stage-publish
+   ```
+
+   Under publishing access, choose "Require two-factor authentication and disallow tokens".
+   CI then needs no stored secret.
 
 ## For LLMs
 
@@ -396,6 +450,7 @@ JSON config validated by zod. npm.
 - Lint/format: `npm run lint` / `npm run format` (Biome) · Types: `npm run typecheck`
 - Schema + README config table: `npm run schema` (CI fails if stale)
 - Full gate (pre-push and CI): `npm run verify`
+- Release: bump `version` and push to `main`; once all jobs pass, the `stage` job in `ci.yml` runs `npm stage publish` for `@mateusbmp/backup-manager` (`scripts/release-check.ts` decides), tags `vX.Y.Z` and drafts a GitHub Release; a maintainer runs `npm stage approve` (README "Releasing")
 
 ## Architecture
 
