@@ -141,6 +141,10 @@ systemctl --user restart bkm
 journalctl --user -u bkm -f      # scheduler and job log
 ```
 
+The Service screen's journal panel runs `journalctl --user -u bkm`. systemd writes per-user journals only
+for UIDs ≥ 1000, so for a system user (e.g. UID 998) it falls back to
+`journalctl _SYSTEMD_USER_UNIT=bkm.service`, which needs the `systemd-journal` (or `adm`) group.
+
 - **Lingering:** **Install / update** runs `loginctl enable-linger $USER`. This lets the service start at
   boot and keep running after you log out. On most systems this needs no root. If your
   system refuses it, the install still succeeds, with a warning that the service only runs
@@ -473,7 +477,7 @@ JSON config validated by zod. npm.
 - Backups: `core/backup/pipeline.ts` (one env; `.tmp-<id>` → manifest → rename; auto-prune), `mariadb.ts`, `archive.ts`, `catalog.ts`, `retention.ts` (pure), `prune.ts`, `lock.ts`.
 - Jobs: `core/jobs/store.ts` (JSON status), `events.ts` (NDJSON), `runner.ts` (`startJob` spawns `bkm __job`: detached from the UI, a normal child from the daemon; `executeJob` runs it).
 - Daemon: `core/daemon/` (scheduler, catch-up via `schedule.json`, reload on file change or SIGHUP, graceful stop) + `src/api/server.ts`.
-- systemd: `core/service/` — every systemctl/journalctl/loginctl call goes through the injectable `CommandRunner` in `systemctl.ts`, always `--user`, never sudo, never a shell; `execRunner` fills a missing `XDG_RUNTIME_DIR`/`DBUS_SESSION_BUS_ADDRESS` from `/run/user/<uid>` (`userBusEnv`).
+- systemd: `core/service/` — every systemctl/journalctl/loginctl call goes through the injectable `CommandRunner` in `systemctl.ts`, always `--user`, never sudo, never a shell (`Systemd.journal` falls back from `--user -u` to `_SYSTEMD_USER_UNIT=` for UID < 1000); `execRunner` fills a missing `XDG_RUNTIME_DIR`/`DBUS_SESSION_BUS_ADDRESS` from `/run/user/<uid>` (`userBusEnv`).
 - UI: `src/ui/App.tsx` (frame, routing, global keys, toasts, modals), `screens/`, `components/` (Form, TextField, ScrollList/ScrollView, Panel), `hooks/` (usePolling, useJobEvents). `ui/print/` renders doctor output for the CLI.
 
 ## Conventions

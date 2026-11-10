@@ -53,6 +53,11 @@ export const execRunner: CommandRunner = (command, args) =>
     );
   });
 
+/** True when journalctl output has at least one log line (not just `-- ... --` banners). */
+function hasEntries(out: string): boolean {
+  return out.split("\n").some((l) => l.trim() && !l.startsWith("-- "));
+}
+
 /** Every systemctl call is user-level; `sudo` is never used. */
 export class Systemd {
   constructor(private readonly run: CommandRunner = execRunner) {}
@@ -61,17 +66,18 @@ export class Systemd {
     return this.run("systemctl", ["--user", ...args]);
   }
 
-  journal(unit: string, lines: number): Promise<CommandResult> {
-    return this.run("journalctl", [
-      "--user",
-      "-u",
-      unit,
-      "-n",
-      String(lines),
-      "--no-pager",
-      "-o",
-      "short-iso",
-    ]);
+  /**
+   * Tail of the unit's log. `--user -u` reads the per-user journal, which systemd only writes for
+   * UIDs >= 1000; for a system user (UID < 1000) it finds nothing, so fall back to the user unit's
+   * entries in the system journal (readable with the `systemd-journal` or `adm` group).
+   */
+  async journal(unit: string, lines: number): Promise<CommandResult> {
+    const tail = ["-n", String(lines), "--no-pager", "-o", "short-iso"];
+    const own = await this.run("journalctl", ["--user", "-u", unit, ...tail]);
+    if (own.code === 0 && hasEntries(own.stdout)) return own;
+    const system = await this.run("journalctl", [`_SYSTEMD_USER_UNIT=${unit}.service`, ...tail]);
+    if (system.code === 0 && hasEntries(system.stdout)) return system;
+    return own;
   }
 
   loginctl(...args: string[]): Promise<CommandResult> {

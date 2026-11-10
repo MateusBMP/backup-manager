@@ -104,6 +104,8 @@ export function fakeSystemd(
   options: {
     available?: boolean;
     lingerAllowed?: boolean;
+    /** `journalctl --user` finds no files (system-user UID < 1000); only the system journal has logs. */
+    userJournalMissing?: boolean;
     linger?: boolean;
     /** stderr when `available` is false */
     busError?: string;
@@ -116,6 +118,7 @@ export function fakeSystemd(
     active: false,
     linger: options.linger ?? false,
     lingerAllowed: options.lingerAllowed ?? true,
+    userJournalMissing: options.userJournalMissing ?? false,
     reloads: 0,
   };
   const calls: string[][] = [];
@@ -172,8 +175,11 @@ export function fakeSystemd(
         return ok();
       }
     }
-    if (command === "journalctl")
+    if (command === "journalctl") {
+      if (state.userJournalMissing && args.includes("--user"))
+        return fail("No journal files were found.\n-- No entries --");
       return ok("-- Logs begin --\n2026-11-09T03:30:00 host bkm[1]: scheduler started\n");
+    }
     return fail(`${command}: command not found`, 127);
   };
   return { runner, calls, state };

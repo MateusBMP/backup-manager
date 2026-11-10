@@ -93,6 +93,14 @@ describe("service manager", () => {
     await expect(m.install()).rejects.toThrow(/not available/);
   });
 
+  test("logs fall back to the system journal when the user journal is missing", async () => {
+    const { m, fake } = await manager({ userJournalMissing: true });
+    expect(await m.logs(10)).toEqual(["2026-11-09T03:30:00 host bkm[1]: scheduler started"]);
+    const last = fake.calls.filter((c) => c[0] === "journalctl").at(-1);
+    expect(last?.[1]).toBe("_SYSTEMD_USER_UNIT=bkm.service");
+    expect(last).not.toContain("--user");
+  });
+
   test("control, logs and uninstall keep data", async () => {
     const { m, fake, dir } = await manager();
     expect(await m.uninstall()).toEqual([]);
