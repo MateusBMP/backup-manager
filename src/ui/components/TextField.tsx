@@ -1,6 +1,7 @@
 import { Text, useInput, usePaste } from "ink";
 import { useRef, useState } from "react";
 import { useApp } from "../context.js";
+import { isZoneKey } from "../keys.js";
 
 export interface TextFieldProps {
   value: string;
@@ -39,6 +40,7 @@ export function TextField({ value, onChange, focus, mask, placeholder, width }: 
     (input, key) => {
       const { value: v, cursor } = live.current;
       const at = Math.min(cursor, v.length);
+      if (isZoneKey(key)) return;
       if (key.leftArrow) commit(v, Math.max(0, at - 1));
       else if (key.rightArrow) commit(v, Math.min(v.length, at + 1));
       else if (key.home || (key.ctrl && input === "a")) commit(v, 0);

@@ -125,20 +125,16 @@ export function Service() {
     isActive: active,
     onSelect: (i) => void run(ACTIONS[i]!.action),
   });
+  const refresh = () => {
+    status.refresh();
+    logs.refresh();
+  };
   useHints([
     { key: "↑↓", label: "action" },
-    { key: "⏎", label: "run" },
-    { key: "r", label: "refresh" },
+    { key: "⏎", label: "run", run: () => nav.select() },
+    { key: "r", label: "refresh", run: refresh },
   ]);
-  useInput(
-    (input) => {
-      if (input === "r") {
-        status.refresh();
-        logs.refresh();
-      }
-    },
-    { isActive: active },
-  );
+  useInput((input) => input === "r" && refresh(), { isActive: active });
 
   const half = Math.floor(width / 2);
   const tz = config ? timezone(config) : undefined;

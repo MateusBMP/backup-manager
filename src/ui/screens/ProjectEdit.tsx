@@ -76,11 +76,6 @@ export function ProjectEdit({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [general, setGeneral] = useState<string[]>([]);
   const hint = useArtisanHint(String(values.path));
-  useHints([
-    { key: "tab", label: "next field" },
-    { key: "ctrl-s", label: "apply" },
-    { key: "esc", label: "cancel" },
-  ]);
 
   const submit = (values: Values) => {
     const candidate = {
@@ -112,6 +107,12 @@ export function ProjectEdit({
     );
     onApply({ ...env, projects, databases });
   };
+
+  useHints([
+    { key: "tab", label: "field" },
+    { key: "ctrl-s", label: "apply", run: () => submit(values) },
+    { key: "esc", label: "cancel", run: onCancel },
+  ]);
 
   const fields: Field[] = [
     {

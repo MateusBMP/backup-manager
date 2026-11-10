@@ -37,6 +37,12 @@ const KEY = {
   up: "\u001b[A",
   right: "\u001b[C",
   ctrlS: "\u0013",
+  // Zone keys as xterm-style terminals (and Termius) send them: CSI 1;5 = Ctrl, CSI 1;3 = Alt.
+  ctrlDown: "\u001b[1;5B",
+  ctrlUp: "\u001b[1;5A",
+  ctrlLeft: "\u001b[1;5D",
+  ctrlRight: "\u001b[1;5C",
+  altDown: "\u001b[1;3B",
   backspace: "\u007f",
 };
 
@@ -373,5 +379,80 @@ describe("ui", () => {
     await broken.keys("r");
     await broken.until("No environments yet");
     broken.unmount();
+  });
+
+  test("buttons and zones: settings save without Ctrl-S, Ctrl/Alt arrows, Esc and the sidebar", async () => {
+    const { services, configPath } = await setup();
+    const ui = await mount(services);
+    await ui.keys("9");
+    await ui.until("Max parallel jobs");
+    await ui.keys(KEY.tab, KEY.tab, KEY.backspace);
+    // Zone keys never reach the form: the same field is still focused when it comes back.
+    await ui.keys(KEY.ctrlRight);
+    await ui.keys(KEY.ctrlDown);
+    await ui.until("[ save ]");
+    expect(ui.frame()).toContain("[ cancel ]");
+    await ui.keys(KEY.ctrlUp);
+    await waitFor(() => expect(ui.frame()).not.toContain("[ save ]"));
+    await ui.type("4");
+    // Esc in the bar only returns to the content (Settings stays open).
+    await ui.keys(KEY.altDown);
+    await ui.until("[ save ]");
+    await ui.keys(KEY.esc);
+    await waitFor(() => expect(ui.frame()).not.toContain("[ save ]"));
+    expect(ui.frame()).toContain("Max parallel jobs");
+    await ui.keys(KEY.altDown);
+    await ui.keys(KEY.enter);
+    await ui.until("settings saved");
+    expect(JSON.parse(await readFile(configPath, "utf8")).settings.compressLevel).toBe(4);
+    // Ctrl+← focuses the sidebar (Settings is last, ↓ wraps to Dashboard).
+    await ui.keys(KEY.ctrlLeft); // separate calls: each zone change re-subscribes handlers
+    await ui.keys(KEY.down);
+    await ui.keys(KEY.enter);
+    await ui.until("Recent backups");
+    ui.unmount();
+  });
+
+  test("buttons: add and cancel an environment, the global back button", async () => {
+    const { services } = await setup();
+    const ui = await mount(services);
+    await ui.keys("e");
+    await ui.until("daily at 03:30");
+    await ui.keys(KEY.ctrlDown);
+    await ui.until("[ run now ]");
+    await ui.keys(KEY.right, KEY.enter); // edit → add
+    await ui.until("New environment");
+    await ui.keys(KEY.ctrlDown);
+    await ui.keys(KEY.right, KEY.enter); // save → cancel
+    await ui.until("daily at 03:30");
+    await ui.keys("b");
+    await ui.until("filter: all");
+    await ui.keys(KEY.ctrlDown);
+    await ui.until("[ back ]");
+    await ui.keys(KEY.right, KEY.right, KEY.right, KEY.enter); // details, environment, filter, back
+    await ui.until("daily at 03:30");
+    ui.unmount();
+  });
+
+  test("onboarding completes through the button bar", async () => {
+    const { services, configPath } = await setup({ config: false });
+    const ui = await mount(services);
+    await ui.until("Let's set up");
+    expect(ui.frame()).toContain("Ctrl+↓ (or Alt+↓)");
+    await ui.keys(KEY.ctrlDown);
+    await ui.until("[ continue ]");
+    await ui.keys(KEY.enter);
+    await ui.until("First environment");
+    await ui.type("prod");
+    await ui.keys(KEY.ctrlDown);
+    await ui.until("[ save ]");
+    expect(ui.frame()).not.toContain("[ cancel ]");
+    await ui.keys(KEY.enter);
+    await ui.until("Install the service?");
+    await ui.keys("n");
+    await ui.until("Recent backups");
+    const { config } = await loadConfig(configPath);
+    expect(config.environments.map((e) => e.name)).toEqual(["prod"]);
+    ui.unmount();
   });
 });

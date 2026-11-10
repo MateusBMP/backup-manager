@@ -1,6 +1,7 @@
 import { Box, Text, useInput } from "ink";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useApp, useCaptureKeys } from "../context.js";
+import { isZoneKey } from "../keys.js";
 import { cell } from "./basics.js";
 import { TextField } from "./TextField.js";
 
@@ -93,6 +94,7 @@ export function Form(props: FormProps) {
 
   useInput(
     (input, key) => {
+      if (isZoneKey(key)) return;
       if (key.ctrl && input === "s") return props.onSubmit(latest.current);
       if (key.escape) return props.onCancel();
       if (key.tab) return move(key.shift ? -1 : 1);

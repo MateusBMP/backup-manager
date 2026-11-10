@@ -53,8 +53,8 @@ export function Jobs() {
     },
   });
   useHints([
-    { key: "⏎", label: "follow" },
-    { key: "x", label: "stop" },
+    { key: "⏎", label: "follow", run: () => nav.select() },
+    { key: "x", label: "stop", run: () => kill(list[nav.index]) },
   ]);
   useInput((input) => input === "x" && kill(list[nav.index]), { isActive: active });
   return (
@@ -161,8 +161,8 @@ export function JobLive({ id }: { id: string }) {
   const max = Math.max(0, logLines.length - logHeight);
   useHints([
     { key: "↑↓", label: "scroll log" },
-    { key: "G", label: "follow" },
-    { key: "x", label: "stop" },
+    { key: "G", label: "follow", run: () => setOffset(null) },
+    { key: "x", label: "stop", run: () => kill(j ?? undefined) },
   ]);
   useInput(
     (input, key) => {

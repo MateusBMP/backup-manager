@@ -71,12 +71,6 @@ export function DatabaseEdit({
   const [test, setTest] = useState<
     { state: "running" } | { state: "done"; ok: boolean; message: string } | null
   >(null);
-  useHints([
-    { key: "tab", label: "next field" },
-    { key: "←→", label: "change type" },
-    { key: "ctrl-s", label: "apply" },
-    { key: "esc", label: "cancel" },
-  ]);
 
   const validate = (values: Values): Database | null => {
     const parsed = DatabaseSchema.safeParse(buildDatabase(values));
@@ -122,6 +116,13 @@ export function DatabaseEdit({
     setTest({ state: "running" });
     void services.testConnection(env, db).then((r) => setTest({ state: "done", ...r }));
   };
+
+  useHints([
+    { key: "tab", label: "field" },
+    { key: "←→", label: "change" },
+    { key: "ctrl-s", label: "apply", run: () => submit(values) },
+    { key: "esc", label: "cancel", run: onCancel },
+  ]);
 
   const laravel = values.type === "laravel";
   const fields: Field[] = [

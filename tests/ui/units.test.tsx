@@ -3,10 +3,11 @@ import { useState } from "react";
 import { describe, expect, test } from "vitest";
 import { emptyConfig } from "../../src/core/config/defaults.js";
 import { type Field, Form, type Values } from "../../src/ui/components/Form.js";
+import { Footer } from "../../src/ui/components/Frame.js";
 import { TextField } from "../../src/ui/components/TextField.js";
-import { Provider } from "../../src/ui/context.js";
+import { type KeyHint, Provider, useHints } from "../../src/ui/context.js";
 import { itemProgress, jobFraction } from "../../src/ui/hooks/useJobEvents.js";
-import { joinList, splitList } from "../../src/ui/keys.js";
+import { isDown, isUp, isZoneKey, joinList, splitList } from "../../src/ui/keys.js";
 import { menuIndex } from "../../src/ui/router.js";
 import { nextLabel } from "../../src/ui/screens/Dashboard.js";
 import { buildDatabase } from "../../src/ui/screens/DatabaseEdit.js";
@@ -311,5 +312,78 @@ describe("text field", () => {
     }
     expect(masked.lastFrame()).toContain("••");
     masked.unmount();
+  });
+});
+
+const calls: number[] = [];
+function HintScreen({ n }: { n: number }) {
+  useHints([{ key: "x", label: "go", run: () => calls.push(n) }], []);
+  return null;
+}
+
+describe("button bar", () => {
+  const theme = makeTheme(false);
+  const run = () => {};
+  const hints: KeyHint[] = [
+    { key: "↑↓", label: "move" },
+    { key: "a", label: "add", run },
+  ];
+  const global: KeyHint[] = [{ key: "q", label: "quit", run }];
+
+  test("footer shows hints, and buttons when focused", () => {
+    const view = (focused: boolean) =>
+      render(
+        <Provider value={{ theme } as never}>
+          <Footer
+            theme={theme}
+            columns={100}
+            hints={hints}
+            global={global}
+            focused={focused}
+            selected={1}
+          />
+        </Provider>,
+      );
+    const plain = view(false);
+    expect(plain.lastFrame()).toContain("↑↓ move  a add  q quit");
+    plain.unmount();
+    const bar = view(true);
+    expect(bar.lastFrame()).toContain("[ add ] [ quit ]");
+    expect(bar.lastFrame()).toContain("esc back");
+    expect(bar.lastFrame()).not.toContain("move");
+    bar.unmount();
+  });
+
+  test("useHints buttons call the latest closure", async () => {
+    let registered: KeyHint[] = [];
+    calls.length = 0;
+    const value = { setHints: (h: KeyHint[]) => (registered = h) } as never;
+    const r = render(
+      <Provider value={value}>
+        <HintScreen n={1} />
+      </Provider>,
+    );
+    await sleep(20);
+    r.rerender(
+      <Provider value={value}>
+        <HintScreen n={2} />
+      </Provider>,
+    );
+    await sleep(20);
+    registered[0]?.run?.();
+    expect(calls).toEqual([2]);
+    r.unmount();
+  });
+
+  test("zone keys are Ctrl/Alt arrows and never move inside lists", () => {
+    const key = (k: Record<string, boolean>) => k as never;
+    expect(isZoneKey(key({ ctrl: true, downArrow: true }))).toBe(true);
+    expect(isZoneKey(key({ meta: true, leftArrow: true }))).toBe(true);
+    expect(isZoneKey(key({ downArrow: true }))).toBe(false);
+    expect(isZoneKey(key({ ctrl: true }))).toBe(false);
+    expect(isDown("", key({ ctrl: true, downArrow: true }))).toBeFalsy();
+    expect(isUp("", key({ meta: true, upArrow: true }))).toBeFalsy();
+    expect(isDown("j", key({}))).toBe(true);
+    expect(isUp("", key({ upArrow: true }))).toBe(true);
   });
 });

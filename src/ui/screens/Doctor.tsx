@@ -12,7 +12,7 @@ export function Doctor() {
   const report = usePolling(() => services.doctor({ db: true }), 0);
   const [offset, setOffset] = useState(0);
   useHints([
-    { key: "r", label: "re-run" },
+    { key: "r", label: "re-run", run: () => report.refresh() },
     { key: "↑↓", label: "scroll" },
   ]);
   const color = { ok: theme.success, warn: theme.warning, fail: theme.error };

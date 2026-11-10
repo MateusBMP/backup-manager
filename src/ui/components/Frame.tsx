@@ -145,21 +145,48 @@ export function TabBar({
   );
 }
 
+/**
+ * The key-hint line. Focused (Ctrl/Alt+↓) it becomes a button bar: only hints with `run`
+ * are shown, as `[ label ]`, and `selected` indexes into those buttons.
+ */
 export function Footer({
   theme,
   columns,
   hints,
   global,
+  focused = false,
+  selected = 0,
 }: {
   theme: Theme;
   columns: number;
   hints: KeyHint[];
   global: KeyHint[];
+  focused?: boolean;
+  selected?: number;
 }) {
+  if (!focused)
+    return (
+      <Box width={columns}>
+        <KeyHints hints={[...hints, ...global]} />
+        <Text color={theme.muted}> </Text>
+      </Box>
+    );
+  const buttons = [...hints, ...global].filter((h) => h.run);
   return (
     <Box width={columns}>
-      <KeyHints hints={[...hints, ...global]} />
-      <Text color={theme.muted}> </Text>
+      <Text wrap="truncate-end">
+        {buttons.map((b, i) => (
+          <Text key={`${b.key}-${b.label}`}>
+            {" "}
+            <Text
+              color={i === selected ? theme.focus : theme.accent}
+              inverse={i === selected}
+              bold={i === selected}
+            >{`[ ${b.label} ]`}</Text>
+          </Text>
+        ))}
+        <Text color={theme.muted}>{"  ←→ pick  ⏎ press  esc back"}</Text>
+      </Text>
     </Box>
   );
 }

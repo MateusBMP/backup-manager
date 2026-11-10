@@ -17,7 +17,7 @@ import {
   useApp as useAppCtx,
 } from "./context.js";
 import { usePolling } from "./hooks/usePolling.js";
-import { isDown, isUp } from "./keys.js";
+import { isDown, isUp, isZoneKey } from "./keys.js";
 import { MENU, menuIndex, type Route } from "./router.js";
 import { Screen } from "./screens/index.js";
 import { makeTheme, type Theme } from "./theme.js";
@@ -37,11 +37,7 @@ type ModalState =
   | { kind: "help" }
   | null;
 
-const GLOBAL_HINTS: KeyHint[] = [
-  { key: "tab", label: "pane" },
-  { key: "?", label: "help" },
-  { key: "q", label: "quit" },
-];
+type Zone = "sidebar" | "content" | "actions";
 
 export function App(props: AppProps) {
   const { services } = props;
@@ -56,7 +52,14 @@ export function App(props: AppProps) {
   const mtime = useRef<number | null>(null);
   const [stack, setStack] = useState<Route[]>([props.initialRoute ?? { name: "dashboard" }]);
   const route = stack[stack.length - 1] as Route;
-  const [focus, setFocus] = useState<"sidebar" | "content">("content");
+  const [focus, setFocus] = useState<Zone>("content");
+  const [actionIndex, setActionIndexState] = useState(0);
+  // Mirrored in a ref: keys that arrive in one chunk (slow SSH links) see each other's moves.
+  const actionRef = useRef(0);
+  const setActionIndex = (i: number) => {
+    actionRef.current = i;
+    setActionIndexState(i);
+  };
   const [sidebarIndex, setSidebarIndex] = useState(0);
   const [captures, setCaptures] = useState<string[]>([]);
   const [hints, setHints] = useState<KeyHint[]>([]);
@@ -176,6 +179,27 @@ export function App(props: AppProps) {
   const wide = size.columns >= WIDE;
   const current = menuIndex(route);
 
+  // Esc and the "back" button: let the screen step back first, then leave it.
+  const goBack = () => {
+    if (backHandler.current?.()) return;
+    if (stack.length > 1) back();
+    else if (wide && config) {
+      setSidebarIndex(current);
+      setFocus("sidebar");
+    }
+  };
+  const globals: KeyHint[] = [
+    { key: "ctrl+←↓→", label: "zones" },
+    // Screens that declare their own Esc button (forms: cancel) don't get a second one.
+    ...(stack.length > 1 && !hints.some((h) => h.key === "esc")
+      ? [{ key: "esc", label: "back", run: goBack }]
+      : []),
+    { key: "?", label: "help", run: () => setModal({ kind: "help" }) },
+    { key: "q", label: "quit", run: () => ink.exit() },
+  ];
+  const buttons = [...hints, ...globals].filter((h) => h.run);
+  const selectedAction = Math.min(actionIndex, Math.max(0, buttons.length - 1));
+
   const closeModal = (result?: boolean) => {
     if (modal?.kind === "confirm") modal.resolve(result ?? false);
     setModal(null);
@@ -187,6 +211,7 @@ export function App(props: AppProps) {
       if (modal.kind === "help") return closeModal();
       if (input === "y") return closeModal(true);
       if (input === "n" || key.escape) return closeModal(false);
+      if (isZoneKey(key)) return;
       if (key.leftArrow || key.rightArrow || key.tab)
         return setModal({ ...modal, choice: !modal.choice });
       if (key.return) return closeModal(modal.choice);
@@ -210,19 +235,50 @@ export function App(props: AppProps) {
         return setFocus((f) => (f === "content" && wide ? "sidebar" : "content"));
       }
       if (key.escape) {
-        if (focus === "content" && backHandler.current?.()) return;
-        if (stack.length > 1) back();
-        else if (wide) {
-          setSidebarIndex(current);
-          setFocus("sidebar");
-        }
+        if (focus === "content") goBack();
+        else if (stack.length > 1) back();
       }
     },
-    { isActive: !captured && modal === null },
+    { isActive: !captured && modal === null && focus !== "actions" },
+  );
+
+  // Ctrl/Alt+arrows move between zones, even while a form holds the keyboard.
+  useInput(
+    (_input, key) => {
+      if (!isZoneKey(key)) return;
+      if (key.leftArrow) {
+        if (!wide || !config) return;
+        setSidebarIndex(current);
+        setFocus("sidebar");
+      } else if (key.downArrow) {
+        setActionIndex(0);
+        setFocus("actions");
+      } else setFocus("content");
+    },
+    { isActive: modal === null },
+  );
+
+  // The footer as a button bar: ←→ pick, ⏎ press, Esc/↑ back to the content.
+  useInput(
+    (input, key) => {
+      if (isZoneKey(key)) return;
+      const n = buttons.length;
+      const at = Math.min(actionRef.current, n - 1);
+      if (key.leftArrow || input === "h" || (key.tab && key.shift))
+        setActionIndex((at - 1 + n) % n);
+      else if (key.rightArrow || input === "l" || key.tab) setActionIndex((at + 1) % n);
+      else if (key.escape || key.upArrow) setFocus("content");
+      else if (key.return || input === " ") {
+        setFocus("content");
+        buttons[at]?.run?.();
+      }
+    },
+    { isActive: focus === "actions" && modal === null && buttons.length > 0 },
   );
 
   useInput(
     (input, key) => {
+      if (isZoneKey(key)) return;
       if (isUp(input, key)) setSidebarIndex((i) => (i - 1 + MENU.length) % MENU.length);
       else if (isDown(input, key)) setSidebarIndex((i) => (i + 1) % MENU.length);
       else if (key.return || key.rightArrow) {
@@ -305,7 +361,9 @@ export function App(props: AppProps) {
           theme={theme}
           columns={size.columns}
           hints={hints}
-          global={captured ? [] : GLOBAL_HINTS}
+          global={captured ? globals.slice(0, 1) : globals}
+          focused={focus === "actions"}
+          selected={selectedAction}
         />
         <Toasts theme={theme} toasts={toasts} now={now} />
         {modal?.kind === "help" && (
@@ -340,7 +398,10 @@ function QuitOnQ() {
 
 function ConfigErrorView({ message }: { message: string }) {
   const { theme, reload, setHints } = useAppCtx();
-  useEffect(() => setHints([{ key: "r", label: "reload" }]), [setHints]);
+  useEffect(
+    () => setHints([{ key: "r", label: "reload", run: () => void reload() }]),
+    [setHints, reload],
+  );
   useInput((input) => {
     if (input === "r") void reload();
   });

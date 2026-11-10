@@ -24,6 +24,8 @@ export interface Toast {
 export interface KeyHint {
   key: string;
   label: string;
+  /** Makes the hint a button in the footer action bar (Ctrl/Alt+↓, then ⏎). */
+  run?: () => void;
 }
 
 export interface ConfirmOptions {
@@ -116,11 +118,19 @@ export function useBackHandler(handler: () => boolean): void {
   }, [setBackHandler]);
 }
 
-export function useHints(hints: KeyHint[], deps: unknown[] = []): void {
+/**
+ * Declare the screen's keys and actions once: the footer shows them as hints and, when they
+ * have `run`, as buttons. Labels refresh on `deps`; `run` always calls the latest closure.
+ * `null` leaves the footer to a nested editor that declares its own.
+ */
+export function useHints(hints: KeyHint[] | null, deps: unknown[] = []): void {
   const { setHints } = useApp();
+  const ref = useRef(hints);
+  ref.current = hints;
   // biome-ignore lint/correctness/useExhaustiveDependencies: hints are recomputed from deps
   useEffect(() => {
-    setHints(hints);
+    if (!hints) return;
+    setHints(hints.map((h, i) => (h.run ? { ...h, run: () => ref.current?.[i]?.run?.() } : h)));
   }, [setHints, ...deps]);
 }
 

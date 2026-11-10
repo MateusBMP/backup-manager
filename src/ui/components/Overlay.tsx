@@ -77,10 +77,12 @@ const HELP: [string, string][] = [
   ["PgUp PgDn", "page"],
   ["⏎", "open / select"],
   ["Esc", "back"],
+  ["Ctrl/Alt + ← → ↓", "zones: sidebar · content · buttons (↑ back)"],
+  ["←→ ⏎ (buttons)", "pick and press a button: save, add, run…"],
   ["Tab", "switch sidebar / content (next field in forms)"],
   ["1–9", "jump to a menu entry"],
   ["n · e · s", "new backup · environments · service"],
-  ["Ctrl-S", "save a form"],
+  ["Ctrl-S", "save a form (or its save button)"],
   ["?", "this help"],
   ["q", "quit (jobs keep running)"],
 ];

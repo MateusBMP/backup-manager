@@ -125,17 +125,17 @@ export function Dashboard() {
       if (env) navigate({ name: "backups", env: env.name });
     },
   });
+  const runNow = useRunNow(active, () => envs[nav.index]?.name);
   useHints(
     [
       { key: "↑↓", label: "move" },
-      { key: "⏎", label: "backups" },
-      { key: "r", label: "run now" },
-      { key: "n", label: "new backup" },
-      { key: "e", label: "environments" },
+      { key: "⏎", label: "backups", run: () => nav.select() },
+      { key: "r", label: "run now", run: runNow },
+      { key: "n", label: "new backup", run: () => navigate({ name: "new-backup" }) },
+      { key: "e", label: "environments", run: () => navigate({ name: "environments" }) },
     ],
     [],
   );
-  useRunNow(active, () => envs[nav.index]?.name);
 
   if (!config) return null;
   if (config.environments.length === 0) {
@@ -200,32 +200,33 @@ export function Dashboard() {
   );
 }
 
-/** `r` starts a detached backup of the selected environment and opens its live view. */
-export function useRunNow(active: boolean, envName: () => string | undefined) {
+/**
+ * `r` starts a detached backup of the selected environment and opens its live view.
+ * Returns the same action for a "run now" button.
+ */
+export function useRunNow(active: boolean, envName: () => string | undefined): () => void {
   const { services, config, navigate, toast, confirm } = useApp();
-  useInput(
-    (input) => {
-      if (input !== "r" || !config) return;
-      const name = envName();
-      if (!name) return;
-      void (async () => {
-        if (
-          !(await confirm({
-            title: "Run backup now",
-            message: `Back up every database and project of '${name}' now?`,
-            confirmLabel: "Run",
-          }))
-        )
-          return;
-        try {
-          const job = await services.startBackup(config, [{ environment: name }]);
-          toast(`backup of ${name} started`, "success");
-          navigate({ name: "job-live", id: job.id });
-        } catch (error) {
-          toast((error as Error).message, "error");
-        }
-      })();
-    },
-    { isActive: active },
-  );
+  const runNow = () => {
+    const name = envName();
+    if (!config || !name) return;
+    void (async () => {
+      if (
+        !(await confirm({
+          title: "Run backup now",
+          message: `Back up every database and project of '${name}' now?`,
+          confirmLabel: "Run",
+        }))
+      )
+        return;
+      try {
+        const job = await services.startBackup(config, [{ environment: name }]);
+        toast(`backup of ${name} started`, "success");
+        navigate({ name: "job-live", id: job.id });
+      } catch (error) {
+        toast((error as Error).message, "error");
+      }
+    })();
+  };
+  useInput((input) => input === "r" && runNow(), { isActive: active });
+  return runNow;
 }

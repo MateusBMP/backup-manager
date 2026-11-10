@@ -9,7 +9,7 @@ import {
 import { ConfigSchema, type Environment } from "../../core/config/schema.js";
 import { formatDateTime } from "../../core/format.js";
 import { describeSchedule, nextRuns, scheduleError } from "../../core/schedule.js";
-import { ErrorLine, Panel } from "../components/basics.js";
+import { ErrorLine, FormTip, Panel } from "../components/basics.js";
 import { type Field, Form, type Values } from "../components/Form.js";
 import { useApp, useHints, useScreenActive } from "../context.js";
 import { DatabaseEdit } from "./DatabaseEdit.js";
@@ -45,7 +45,7 @@ export function EnvironmentEdit({
   envName?: string;
   onboarding?: boolean;
 }) {
-  const { config, width, height, save, back, navigate, confirm, services, toast, theme } = useApp();
+  const { config, width, height, save, back, navigate, confirm, services, toast } = useApp();
   const active = useScreenActive();
   const original = config && envName ? findEnvironment(config, envName) : undefined;
   const [draft, setDraft] = useState<Environment>(() =>
@@ -63,16 +63,17 @@ export function EnvironmentEdit({
   const [mode, setMode] = useState<Mode>({ kind: "env" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [general, setGeneral] = useState<string[]>([]);
+  const cancel = () => (onboarding ? undefined : back());
   useHints(
     mode.kind === "env"
       ? [
           { key: "tab/↑↓", label: "field" },
           { key: "⏎", label: "open" },
           { key: "d", label: "remove item" },
-          { key: "ctrl-s", label: "save" },
-          { key: "esc", label: "cancel" },
+          { key: "ctrl-s", label: "save", run: () => void submit(values) },
+          ...(onboarding ? [] : [{ key: "esc", label: "cancel", run: cancel }]),
         ]
-      : [],
+      : null,
     [mode.kind],
   );
   if (!config) return null;
@@ -324,7 +325,7 @@ export function EnvironmentEdit({
         values={values}
         onChange={setValues}
         onSubmit={(v) => void submit(v)}
-        onCancel={() => (onboarding ? undefined : back())}
+        onCancel={cancel}
         isActive={active}
         width={width - 4}
         height={height - 4 - general.length}
@@ -333,11 +334,7 @@ export function EnvironmentEdit({
         {general.map((g) => (
           <ErrorLine key={g}>{g}</ErrorLine>
         ))}
-        {onboarding && (
-          <Text color={theme.muted}>
-            Ctrl-S saves; you can add projects and databases now or later.
-          </Text>
-        )}
+        {onboarding && <FormTip />}
       </Box>
     </Panel>
   );

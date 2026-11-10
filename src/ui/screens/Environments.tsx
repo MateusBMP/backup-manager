@@ -15,34 +15,41 @@ export function Environments() {
     state: useSessionState("environments:index", 0),
     onSelect: (i) => navigate({ name: "environment-edit", env: envs[i]?.name }),
   });
+  const runNow = useRunNow(active, () => envs[nav.index]?.name);
+  const add = () => navigate({ name: "environment-edit" });
+  const backups = () => {
+    const env = envs[nav.index];
+    if (env) navigate({ name: "backups", env: env.name });
+  };
+  const remove = () => {
+    const env = envs[nav.index];
+    if (!env || !config) return;
+    void (async () => {
+      const ok = await confirm({
+        title: "Delete environment",
+        message: `Remove '${env.name}' from the config? Its backups on disk are kept.`,
+        confirmLabel: "Delete",
+        danger: true,
+      });
+      if (ok)
+        await save(
+          { ...config, environments: envs.filter((e) => e.name !== env.name) },
+          `deleted ${env.name}`,
+        );
+    })();
+  };
   useHints([
-    { key: "⏎", label: "edit" },
-    { key: "a", label: "add" },
-    { key: "d", label: "delete" },
-    { key: "b", label: "backups" },
-    { key: "r", label: "run now" },
+    { key: "⏎", label: "edit", run: () => nav.select() },
+    { key: "a", label: "add", run: add },
+    { key: "d", label: "delete", run: remove },
+    { key: "b", label: "backups", run: backups },
+    { key: "r", label: "run now", run: runNow },
   ]);
-  useRunNow(active, () => envs[nav.index]?.name);
   useInput(
     (input) => {
-      const env = envs[nav.index];
-      if (input === "a") navigate({ name: "environment-edit" });
-      else if (input === "b" && env) navigate({ name: "backups", env: env.name });
-      else if (input === "d" && env && config) {
-        void (async () => {
-          const ok = await confirm({
-            title: "Delete environment",
-            message: `Remove '${env.name}' from the config? Its backups on disk are kept.`,
-            confirmLabel: "Delete",
-            danger: true,
-          });
-          if (ok)
-            await save(
-              { ...config, environments: envs.filter((e) => e.name !== env.name) },
-              `deleted ${env.name}`,
-            );
-        })();
-      }
+      if (input === "a") add();
+      else if (input === "b") backups();
+      else if (input === "d") remove();
     },
     { isActive: active },
   );

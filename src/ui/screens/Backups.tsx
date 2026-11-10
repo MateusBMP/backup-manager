@@ -5,7 +5,7 @@ import { cell, Muted, Panel, StatusText } from "../components/basics.js";
 import { ScrollList, ScrollView } from "../components/ScrollList.js";
 import { useApp, useHints, useScreenActive, useSessionState } from "../context.js";
 import { usePolling } from "../hooks/usePolling.js";
-import { isDown, isUp, useListNav } from "../keys.js";
+import { isDown, isUp, isZoneKey, useListNav } from "../keys.js";
 
 const FILTERS = ["all", "complete", "partial", "incomplete"] as const;
 
@@ -41,19 +41,23 @@ export function Backups({ envName }: { envName?: string }) {
       if (b && env) navigate({ name: "backup-detail", env: env.name, id: b.id });
     },
   });
+  const shiftEnv = (delta: number) =>
+    setEnvIndex((i) => (i + delta + envs.length) % Math.max(1, envs.length));
+  const nextFilter = () => setFilter((f) => (f + 1) % FILTERS.length);
   useHints(
     [
-      { key: "⏎", label: "details" },
-      { key: "←→", label: "environment" },
-      { key: "f", label: `filter: ${status}` },
+      { key: "⏎", label: "details", run: () => nav.select() },
+      { key: "←→", label: "environment", run: () => shiftEnv(1) },
+      { key: "f", label: `filter: ${status}`, run: nextFilter },
     ],
     [status],
   );
   useInput(
     (input, key) => {
-      if (key.leftArrow) setEnvIndex((i) => (i - 1 + envs.length) % Math.max(1, envs.length));
-      else if (key.rightArrow) setEnvIndex((i) => (i + 1) % Math.max(1, envs.length));
-      else if (input === "f") setFilter((f) => (f + 1) % FILTERS.length);
+      if (isZoneKey(key)) return;
+      if (key.leftArrow) shiftEnv(-1);
+      else if (key.rightArrow) shiftEnv(1);
+      else if (input === "f") nextFilter();
     },
     { isActive: active },
   );
@@ -117,10 +121,7 @@ export function BackupDetail({ envName, id }: { envName: string; id: string }) {
     0,
     [config, envName, id],
   );
-  useHints([
-    { key: "↑↓", label: "scroll" },
-    { key: "esc", label: "back" },
-  ]);
+  useHints([{ key: "↑↓", label: "scroll" }]);
   const b = backup.data;
   const lines: React.ReactNode[] = [];
   if (b) {

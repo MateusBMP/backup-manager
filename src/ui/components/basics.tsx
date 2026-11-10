@@ -141,6 +141,11 @@ export function Muted({ children }: { children: ReactNode }) {
   return <Text color={theme.muted}>{children}</Text>;
 }
 
+/** One line that teaches the button bar where Ctrl-S may not reach (Termius, XOFF). */
+export function FormTip() {
+  return <Muted>Ctrl+↓ (or Alt+↓) reaches the buttons below; Ctrl-S also saves.</Muted>;
+}
+
 export function ErrorLine({ children }: { children: ReactNode }) {
   const { theme } = useApp();
   return <Text color={theme.error}>✘ {children}</Text>;

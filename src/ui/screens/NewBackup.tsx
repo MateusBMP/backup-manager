@@ -37,7 +37,7 @@ export function buildTargets(
 }
 
 export function NewBackup({ envName }: { envName?: string }) {
-  const { config, services, width, height, navigate, toast, theme } = useApp();
+  const { config, services, width, height, navigate, back, toast, theme } = useApp();
   const active = useScreenActive();
   const envs = (config?.environments ?? []).filter(
     (e) => e.databases.length + e.projects.length > 0,
@@ -62,20 +62,6 @@ export function NewBackup({ envName }: { envName?: string }) {
 
   const envNav = useListNav(envs.length, { isActive: active && step === "envs" });
   const itemNav = useListNav(items.length, { isActive: active && step === "items" });
-  useHints(
-    step === "confirm"
-      ? [
-          { key: "⏎", label: "start" },
-          { key: "esc", label: "back" },
-        ]
-      : [
-          { key: "space", label: "toggle" },
-          { key: "a", label: "all/none" },
-          { key: "⏎", label: "next" },
-          { key: "esc", label: "back" },
-        ],
-    [step],
-  );
 
   const start = async () => {
     if (!config || starting) return;
@@ -90,39 +76,63 @@ export function NewBackup({ envName }: { envName?: string }) {
     }
   };
 
-  useBackHandler(() => {
+  const stepBack = () => {
     if (step === "envs") return false;
     setStep(step === "confirm" ? "items" : "envs");
     return true;
-  });
+  };
+  useBackHandler(stepBack);
+  const toggle = () => {
+    if (step === "envs") {
+      const env = envs[envNav.index];
+      if (!env) return;
+      const next = new Set(selectedEnvs);
+      next.has(env.name) ? next.delete(env.name) : next.add(env.name);
+      setSelectedEnvs(next);
+    } else if (step === "items") {
+      const item = items[itemNav.index];
+      if (!item) return;
+      const next = new Set(excluded);
+      next.has(keyOf(item)) ? next.delete(keyOf(item)) : next.add(keyOf(item));
+      setExcluded(next);
+    }
+  };
+  const all = () => {
+    if (step === "envs")
+      setSelectedEnvs(
+        selectedEnvs.size === envs.length ? new Set() : new Set(envs.map((e) => e.name)),
+      );
+    else if (step === "items")
+      setExcluded(picked.size === items.length ? new Set(items.map(keyOf)) : new Set());
+  };
+  const next = () => {
+    if (step === "envs") {
+      const env = envs[envNav.index];
+      if (selectedEnvs.size === 0 && env) setSelectedEnvs(new Set([env.name]));
+      setStep("items");
+    } else if (step === "items") {
+      if (picked.size > 0) setStep("confirm");
+    } else void start();
+  };
+  useHints(
+    step === "confirm"
+      ? [
+          { key: "⏎", label: "start", run: next },
+          { key: "esc", label: "back", run: stepBack },
+        ]
+      : [
+          { key: "space", label: "toggle", run: toggle },
+          { key: "a", label: "all/none", run: all },
+          { key: "⏎", label: "next", run: next },
+          { key: "esc", label: "back", run: () => stepBack() || back() },
+        ],
+    [step],
+  );
   useInput(
     (input, key) => {
-      if (step === "envs") {
-        const env = envs[envNav.index];
-        if (input === " " && env) {
-          const next = new Set(selectedEnvs);
-          next.has(env.name) ? next.delete(env.name) : next.add(env.name);
-          setSelectedEnvs(next);
-        } else if (input === "a") {
-          setSelectedEnvs(
-            selectedEnvs.size === envs.length ? new Set() : new Set(envs.map((e) => e.name)),
-          );
-        } else if (key.return) {
-          if (selectedEnvs.size === 0 && env) setSelectedEnvs(new Set([env.name]));
-          setStep("items");
-        }
-      } else if (step === "items") {
-        const item = items[itemNav.index];
-        if (input === " " && item) {
-          const next = new Set(excluded);
-          next.has(keyOf(item)) ? next.delete(keyOf(item)) : next.add(keyOf(item));
-          setExcluded(next);
-        } else if (input === "a") {
-          setExcluded(picked.size === items.length ? new Set(items.map(keyOf)) : new Set());
-        } else if (key.return && picked.size > 0) setStep("confirm");
-      } else if (step === "confirm") {
-        if (key.return) void start();
-      }
+      if (input === " ") toggle();
+      else if (input === "a") all();
+      else if (key.return) next();
     },
     { isActive: active },
   );

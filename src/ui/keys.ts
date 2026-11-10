@@ -1,8 +1,15 @@
 import { type Key, useInput } from "ink";
 import { useEffect, useState } from "react";
 
-export const isUp = (input: string, key: Key) => key.upArrow || input === "k";
-export const isDown = (input: string, key: Key) => key.downArrow || input === "j";
+/** Ctrl/Alt + arrow: moves between zones (sidebar, content, button bar), never inside one. */
+export const isZoneKey = (key: Key): boolean =>
+  Boolean(
+    (key.ctrl || key.meta) && (key.upArrow || key.downArrow || key.leftArrow || key.rightArrow),
+  );
+/** Unmodified key, so Ctrl/Alt+arrows fall through to the zone handler. */
+const plain = (key: Key) => !key.ctrl && !key.meta;
+export const isUp = (input: string, key: Key) => plain(key) && (key.upArrow || input === "k");
+export const isDown = (input: string, key: Key) => plain(key) && (key.downArrow || input === "j");
 
 export interface ListNavOptions {
   isActive: boolean;
@@ -34,7 +41,10 @@ export function useListNav(count: number, options: ListNavOptions) {
     },
     { isActive: options.isActive },
   );
-  return { index: Math.min(index, Math.max(0, count - 1)), setIndex };
+  const at = Math.min(index, Math.max(0, count - 1));
+  /** Same as ⏎ (for a button). */
+  const select = () => count > 0 && options.onSelect?.(at);
+  return { index: at, setIndex, select };
 }
 
 /** Split a comma list, ignoring commas inside `{…}` glob braces. */

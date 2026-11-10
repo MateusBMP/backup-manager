@@ -19,11 +19,6 @@ export function Prune() {
   );
   const [offset, setOffset] = useState(0);
   const [busy, setBusy] = useState(false);
-  useHints([
-    { key: "p", label: "apply" },
-    { key: "r", label: "refresh" },
-    { key: "↑↓", label: "scroll" },
-  ]);
   const list = plans.data ?? [];
   const toDelete = list.reduce((s, p) => s + p.delete.length + p.staleTemp.length, 0);
   const freed = list.reduce((s, p) => s + p.freedBytes, 0);
@@ -57,33 +52,38 @@ export function Prune() {
   }
   const viewHeight = height - 5;
 
+  const apply = () => {
+    if (toDelete === 0 || busy) return;
+    void (async () => {
+      const ok = await confirm({
+        title: "Apply retention",
+        message: `Delete ${toDelete} item(s) and free ${formatBytes(freed)}? This cannot be undone.`,
+        confirmLabel: "Delete",
+        danger: true,
+      });
+      if (!ok) return;
+      setBusy(true);
+      const r = await services.applyPrune(list);
+      setBusy(false);
+      toast(
+        r.errors.length ? `deleted ${r.deleted}; ${r.errors[0]}` : `deleted ${r.deleted} item(s)`,
+        r.errors.length ? "warning" : "success",
+      );
+      plans.refresh();
+    })();
+  };
+  useHints([
+    { key: "p", label: "apply", run: apply },
+    { key: "r", label: "refresh", run: () => plans.refresh() },
+    { key: "↑↓", label: "scroll" },
+  ]);
   useInput(
     (input, key) => {
       if (isUp(input, key)) setOffset((o) => Math.max(0, o - 1));
       else if (isDown(input, key))
         setOffset((o) => Math.min(Math.max(0, lines.length - viewHeight), o + 1));
       else if (input === "r") plans.refresh();
-      else if (input === "p" && toDelete > 0 && !busy) {
-        void (async () => {
-          const ok = await confirm({
-            title: "Apply retention",
-            message: `Delete ${toDelete} item(s) and free ${formatBytes(freed)}? This cannot be undone.`,
-            confirmLabel: "Delete",
-            danger: true,
-          });
-          if (!ok) return;
-          setBusy(true);
-          const r = await services.applyPrune(list);
-          setBusy(false);
-          toast(
-            r.errors.length
-              ? `deleted ${r.deleted}; ${r.errors[0]}`
-              : `deleted ${r.deleted} item(s)`,
-            r.errors.length ? "warning" : "success",
-          );
-          plans.refresh();
-        })();
-      }
+      else if (input === "p") apply();
     },
     { isActive: active },
   );

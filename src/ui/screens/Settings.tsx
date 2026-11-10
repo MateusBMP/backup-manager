@@ -73,8 +73,8 @@ export function Settings() {
   useHints([
     { key: "tab", label: "field" },
     { key: "space", label: "toggle" },
-    { key: "ctrl-s", label: "save" },
-    { key: "esc", label: "leave" },
+    { key: "ctrl-s", label: "save", run: () => void submit(values) },
+    { key: "esc", label: "cancel", run: () => void leave() },
   ]);
   if (!config) return null;
 
@@ -92,6 +92,19 @@ export function Settings() {
     setErrors({});
     setGeneral([]);
     await save(parsed.data, "settings saved");
+  };
+  const leave = async () => {
+    const dirty = JSON.stringify(values) !== JSON.stringify(settingsValues(config));
+    if (
+      !dirty ||
+      (await confirm({
+        title: "Discard changes",
+        message: "Leave Settings without saving?",
+        confirmLabel: "Discard",
+        danger: true,
+      }))
+    )
+      back();
   };
   const fields: Field[] = [
     { kind: "heading", key: "h1", label: "Storage" },
@@ -185,21 +198,7 @@ export function Settings() {
         values={values}
         onChange={setValues}
         onSubmit={(v) => void submit(v)}
-        onCancel={() =>
-          void (async () => {
-            const dirty = JSON.stringify(values) !== JSON.stringify(settingsValues(config));
-            if (
-              !dirty ||
-              (await confirm({
-                title: "Discard changes",
-                message: "Leave Settings without saving?",
-                confirmLabel: "Discard",
-                danger: true,
-              }))
-            )
-              back();
-          })()
-        }
+        onCancel={() => void leave()}
         isActive={active}
         width={width - 4}
         height={height - 3 - general.length}

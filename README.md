@@ -259,7 +259,7 @@ Every key (generated from the schema):
 │   Doctor         │ │ ✔ production  20261109-033000  complete   1.6 GiB  9h ago    │
 │   Settings       │ ╰──────────────────────────────────────────────────────────────╯
 ╰──────────────────╯
- ↑↓ move  ⏎ backups  r run now  n new backup  e environments  tab pane  ? help  q quit
+ ↑↓ move  ⏎ backups  r run now  n new backup  e environments  ctrl+←↓→ zones  ? help  q quit
 ```
 
 | Screen                 | What you can do                                                                                                                                                                  |
@@ -279,6 +279,13 @@ Every key (generated from the schema):
 `Esc` back · `Tab` switches between the sidebar and the content (in forms, it moves to the next
 field) · `1`–`9` jump to a menu entry · `n` new backup · `e` environments · `s` service ·
 `Ctrl-S` saves a form · `?` help · `q` quit.
+
+**Buttons and zones:** every action on the footer line is also a button. `Ctrl+↓` focuses
+the footer as a button bar (`[ save ] [ cancel ] …`); `←→` picks a button, `⏎` presses it,
+and `Esc` or `↑` returns. `Ctrl+←` focuses the sidebar, and `Ctrl+→` or `Ctrl+↑` returns to
+the content. `Alt` works in place of `Ctrl`. Use these in terminals that swallow chords
+like `Ctrl-S` (Termius, or any terminal with XON/XOFF flow control): every form can be
+saved with its **save** button, and screens you reached from another one get a **back** button.
 
 Below 90 columns the sidebar becomes a tab bar, and below 60×16 the UI asks you to resize.
 `NO_COLOR` is honored.
@@ -466,6 +473,7 @@ JSON config validated by zod. npm.
 ## Conventions
 
 - Ink: colors only from `ui/theme.ts`; gate every `useInput` with `isActive` (`useScreenActive()`); forms take the keyboard via `useCaptureKeys`; size from the App context (`width`/`height`), not ad-hoc.
+- Actions: declare each screen action once with `useHints([{ key, label, run }])`. The footer shows it as a hint, and as a button once Ctrl/Alt+↓ focuses the bar, so the key handler and the button share one function. Ctrl/Alt+arrows belong to App's zone switching: arrow handlers ignore them (`isZoneKey`; `isUp`/`isDown` already do).
 - Tests: vitest + ink-testing-library (100 columns; send a no-op key after mount and wait before keys; match frames after `stripVTControlCharacters`, since CI forces color). Temp dirs via `tests/helpers.ts`; fake `mariadb-dump` (`installFakeDump`) and fake systemd (`fakeSystemd`).
 - Every behavior change needs tests; keep README (and this block) in sync in the same change.
 
