@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { swaggerUI } from "@hono/swagger-ui";
 import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
-import type { BackupInfo } from "../core/backup/catalog.js";
+import { type BackupInfo, diskUsage } from "../core/backup/catalog.js";
 import {
   effectiveRetention,
   envBackupDir,
@@ -74,9 +74,16 @@ const EnvironmentSummary = z
   })
   .openapi("EnvironmentSummary");
 
+const DiskUsage = z
+  .object({ total: z.number(), free: z.number(), used: z.number() })
+  .openapi("DiskUsage");
+
 const EnvironmentDetail = EnvironmentSummary.extend({
   backupDir: z.string(),
   retention: z.object({ keepLast: z.number(), keepDays: z.number() }),
+  disk: DiskUsage.nullable().openapi({
+    description: "Space on the filesystem holding backupDir, in bytes; null when unreadable",
+  }),
 }).openapi("EnvironmentDetail");
 
 const Project = z
@@ -87,6 +94,31 @@ const Project = z
     exclude: z.array(z.string()),
   })
   .openapi("Project");
+
+const ProjectDatabaseItem = z
+  .object({
+    name: z.string(),
+    status: z.enum(["success", "failed"]),
+    size: z.number(),
+    durationMs: z.number(),
+    error: z.string().optional(),
+  })
+  .openapi("ProjectDatabaseItem");
+
+const ProjectBackup = z
+  .object({
+    backupId: z.string(),
+    createdAt: z.string(),
+    backupStatus: Status,
+    status: z.enum(["success", "failed"]),
+    size: z.number(),
+    durationMs: z.number(),
+    error: z.string().optional(),
+    warnings: z.array(z.string()).optional(),
+    detail: z.string().optional(),
+    databases: z.array(ProjectDatabaseItem),
+  })
+  .openapi("ProjectBackup");
 
 const DatabaseOut = z
   .object({
@@ -134,6 +166,9 @@ const Health = z
 const EnvParam = z.object({
   env: z.string().openapi({ param: { name: "env", in: "path" }, example: "production" }),
 });
+const ProjectParam = EnvParam.extend({
+  project: z.string().openapi({ param: { name: "project", in: "path" }, example: "shop" }),
+});
 const json = <T extends z.ZodType>(schema: T, description: string) => ({
   content: { "application/json": { schema } },
   description,
@@ -165,6 +200,44 @@ function databaseOut(db: Database): z.infer<typeof DatabaseOut> {
     socket: s.socket ?? null,
     schemas: s.type === "connection" ? s.schemas : s.database ? [s.database] : null,
   };
+}
+
+/**
+ * The project's item in every backup that contains it, with the items of the databases read from
+ * the project's `.env`, newest first.
+ */
+function projectBackups(
+  backups: BackupInfo[],
+  project: string,
+  databases: string[],
+): z.infer<typeof ProjectBackup>[] {
+  return backups.flatMap((b) => {
+    const items = b.manifest?.items ?? [];
+    const item = items.find((i) => i.kind === "project" && i.name === project);
+    if (!item) return [];
+    return [
+      {
+        backupId: b.id,
+        createdAt: b.createdAt.toISOString(),
+        backupStatus: b.status,
+        status: item.status,
+        size: item.size,
+        durationMs: item.durationMs,
+        ...(item.error ? { error: item.error } : {}),
+        ...(item.warnings?.length ? { warnings: item.warnings } : {}),
+        ...(item.detail ? { detail: item.detail } : {}),
+        databases: items
+          .filter((i) => i.kind === "database" && databases.includes(i.name))
+          .map((i) => ({
+            name: i.name,
+            status: i.status,
+            size: i.size,
+            durationMs: i.durationMs,
+            ...(i.error ? { error: i.error } : {}),
+          })),
+      },
+    ];
+  });
 }
 
 function jobOut(j: JobRecord): z.infer<typeof Job> {
@@ -285,11 +358,13 @@ export function createApi(options: ApiOptions) {
       const env = envOr404(c.req.valid("param").env);
       if (!env) return c.json({ error: "unknown environment" }, 404);
       const config = getConfig();
+      const backupDir = envBackupDir(config, env);
       return c.json(
         {
           ...(await summary(env.name)),
-          backupDir: envBackupDir(config, env),
+          backupDir,
           retention: effectiveRetention(config, env),
+          disk: await diskUsage(backupDir),
         },
         200,
       );
@@ -311,6 +386,40 @@ export function createApi(options: ApiOptions) {
         env.projects.map(({ name, path, include, exclude }) => ({ name, path, include, exclude })),
         200,
       );
+    },
+  );
+
+  app.openapi(
+    createRoute({
+      method: "get",
+      path: "/environments/{env}/projects/{project}/backups",
+      security: secured,
+      request: {
+        params: ProjectParam,
+        query: z.object({ limit: z.coerce.number().int().min(1).max(1000).optional() }),
+      },
+      responses: {
+        200: json(z.array(ProjectBackup), "The project in each backup, newest first"),
+        ...notFound,
+      },
+    }),
+    async (c) => {
+      const { env: name, project } = c.req.valid("param");
+      const env = envOr404(name);
+      if (!env) return c.json({ error: "unknown environment" }, 404);
+      if (!env.projects.some((p) => p.name === project)) {
+        return c.json({ error: "unknown project" }, 404);
+      }
+      const databases = env.databases
+        .filter((d) => d.source.type === "laravel" && d.source.project === project)
+        .map((d) => d.name);
+      const list = projectBackups(
+        await services.backups(getConfig(), env.name),
+        project,
+        databases,
+      );
+      const { limit } = c.req.valid("query");
+      return c.json(limit ? list.slice(0, limit) : list, 200);
     },
   );
 

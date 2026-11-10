@@ -95,12 +95,38 @@ describe("api", () => {
       name: "prod",
       retention: { keepLast: 7, keepDays: 30 },
       schedule: "30 3 * * *",
+      disk: { total: expect.any(Number), free: expect.any(Number), used: expect.any(Number) },
     });
+    const disk = (env.body as unknown as { disk: { total: number; free: number } }).disk;
+    expect(disk.total).toBeGreaterThan(0);
+    expect(disk.free).toBeLessThanOrEqual(disk.total);
 
     const projects = await get("/environments/prod/projects");
     expect(projects.body).toEqual([
       expect.objectContaining({ name: "shop", include: ["storage/app"] }),
     ]);
+
+    const history = await get("/environments/prod/projects/shop/backups?limit=5");
+    expect(history.body).toEqual([
+      {
+        backupId: backup.backupId,
+        createdAt: expect.any(String),
+        backupStatus: "complete",
+        status: "success",
+        size: expect.any(Number),
+        durationMs: expect.any(Number),
+        detail: "2 files",
+        databases: [
+          {
+            name: "shop",
+            status: "success",
+            size: expect.any(Number),
+            durationMs: expect.any(Number),
+          },
+        ],
+      },
+    ]);
+    expect((await get("/environments/prod/projects/shop/backups?limit=0")).status).toBe(400);
 
     const dbs = await get("/environments/prod/databases");
     expect(dbs.body).toEqual([
@@ -156,6 +182,7 @@ describe("api", () => {
     const docs = await get("/openapi.json");
     expect(docs.body).toMatchObject({ openapi: "3.1.0" });
     expect(JSON.stringify(docs.body)).toContain("/environments/{env}/backups/{id}");
+    expect(JSON.stringify(docs.body)).toContain("/environments/{env}/projects/{project}/backups");
   });
 
   test("404s and sanitized 500s", async () => {
@@ -164,6 +191,8 @@ describe("api", () => {
       "/environments/nope",
       "/environments/nope/projects",
       "/environments/nope/databases",
+      "/environments/nope/projects/shop/backups",
+      "/environments/prod/projects/nope/backups",
       "/environments/nope/backups",
       "/environments/nope/backups/x",
       "/environments/prod/backups/20990101-000000",

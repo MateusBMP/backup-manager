@@ -6,6 +6,7 @@ import { describe, expect, test } from "vitest";
 import { archiveProject, excludeMatcher } from "../../src/core/backup/archive.js";
 import {
   dateFromId,
+  diskUsage,
   listBackups,
   listTempDirs,
   readBackup,
@@ -122,6 +123,18 @@ describe("catalog, manifest and prune", () => {
     const result = await applyPrune(plan);
     expect(result.deleted).toHaveLength(2);
     expect((await listBackups(dir, "prod")).map((x) => x.id)).toEqual(["20261105-030000"]);
+  });
+
+  test("diskUsage measures the nearest existing parent of a missing directory", async () => {
+    const root = await tempDir();
+    const usage = await diskUsage(path.join(root, "not", "created", "yet"));
+    expect(usage).toEqual({
+      total: expect.any(Number),
+      free: expect.any(Number),
+      used: expect.any(Number),
+    });
+    expect(usage!.total).toBeGreaterThan(0);
+    expect(usage!.free + usage!.used).toBeLessThanOrEqual(usage!.total);
   });
 
   test("backupStatus", () => {

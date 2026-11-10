@@ -1,4 +1,4 @@
-import { readdir, stat } from "node:fs/promises";
+import { readdir, stat, statfs } from "node:fs/promises";
 import path from "node:path";
 import { type BackupStatus, type Manifest, readManifest } from "./manifest.js";
 
@@ -96,4 +96,30 @@ export async function listTempDirs(envDir: string): Promise<{ dir: string; mtime
     if (s) out.push({ dir, mtime: s.mtime });
   }
   return out;
+}
+
+export interface DiskUsage {
+  total: number;
+  free: number;
+  used: number;
+}
+
+/**
+ * Space on the filesystem holding `dir`. A directory that does not exist yet is measured on its
+ * nearest existing parent. Null when the filesystem cannot be read.
+ */
+export async function diskUsage(dir: string): Promise<DiskUsage | null> {
+  let current = path.resolve(dir);
+  for (;;) {
+    try {
+      const fs = await statfs(current);
+      const total = fs.blocks * fs.bsize;
+      const free = fs.bavail * fs.bsize;
+      return { total, free, used: Math.max(0, total - fs.bfree * fs.bsize) };
+    } catch {
+      const parent = path.dirname(current);
+      if (parent === current) return null;
+      current = parent;
+    }
+  }
 }

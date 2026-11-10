@@ -316,8 +316,9 @@ OpenAPI docs are at `/docs`.
 | ------------------------------------------------ | ----------------------------------------------------------------------------------------- |
 | `GET /health`                                    | status, version, uptime, next scheduled runs                                              |
 | `GET /environments`                              | summaries: counts, sizes, last backup, `nextRun`, running                                 |
-| `GET /environments/{env}`                        | the summary plus `backupDir` and effective retention                                      |
+| `GET /environments/{env}`                        | the summary plus `backupDir`, effective retention and `disk` (total, free, used bytes)    |
 | `GET /environments/{env}/projects`               | name, path, include, exclude                                                              |
+| `GET /environments/{env}/projects/{project}/backups?limit=` | the project's item in each backup, with its databases, newest first |
 | `GET /environments/{env}/databases`              | name, type, project, host, port, socket, schemas (**never** user, password or extra args) |
 | `GET /environments/{env}/backups?status=&limit=` | backups, newest first                                                                     |
 | `GET /environments/{env}/backups/{id}`           | one backup with every item from its manifest                                              |
