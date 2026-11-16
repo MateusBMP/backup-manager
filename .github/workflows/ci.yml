@@ -154,7 +154,7 @@ jobs:
           - { distro: arch, image: "archlinux:latest" }
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: tarball
       - name: Build, install, run and remove the package in ${{ matrix.image }}
@@ -202,7 +202,7 @@ jobs:
         run: npm run release:check
       - name: Download the smoke-tested tarball
         if: steps.check.outputs.stage == 'true'
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: package
       - name: Use an npm with staged publishing

@@ -38,6 +38,16 @@ function typeOf(n: Node): string {
   return Array.isArray(n.type) ? n.type.join(" \\| ") : (n.type ?? "object");
 }
 
+/** Plain text in a table cell: a backslash and a pipe are escaped. */
+function textCell(text: string): string {
+  return text.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
+}
+
+/** Inside a code span only the pipe is escaped: a backslash is literal there. */
+function codeCell(code: string): string {
+  return code.split("|").join("\\|");
+}
+
 function rows(node: Node, prefix: string, out: string[]) {
   for (const [key, child] of Object.entries(node.properties ?? {})) {
     if (key === "$schema") continue;
@@ -46,9 +56,9 @@ function rows(node: Node, prefix: string, out: string[]) {
     const def =
       child.default !== undefined &&
       (typeof child.default !== "object" || Array.isArray(child.default))
-        ? `\`${JSON.stringify(child.default).replace(/\|/g, "\\|")}\``
+        ? `\`${codeCell(JSON.stringify(child.default))}\``
         : "";
-    const description = (child.description ?? "").replace(/\|/g, "\\|");
+    const description = textCell(child.description ?? "");
     if (child.type === "object" || child.properties) {
       if (description) out.push(`| \`${path}\` | object | | ${description} |`);
       rows(child, path, out);
@@ -59,7 +69,7 @@ function rows(node: Node, prefix: string, out: string[]) {
       for (const v of variants) {
         const kind = v.properties?.type?.const;
         out.push(
-          `| \`${path}\` (type \`${String(kind)}\`) | object | | ${(v.description ?? "").replace(/\|/g, "\\|")} |`,
+          `| \`${path}\` (type \`${String(kind)}\`) | object | | ${textCell(v.description ?? "")} |`,
         );
         rows(v, path, out);
       }

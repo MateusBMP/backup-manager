@@ -108,7 +108,7 @@ export async function fetchPublished(
   name: string,
   registry = "https://registry.npmjs.org",
 ): Promise<{ versions: string[]; latest?: string }> {
-  const url = `${registry.replace(/\/$/, "")}/${name.replace("/", "%2f")}`;
+  const url = `${registry.replace(/\/$/, "")}/${name.replaceAll("/", "%2f")}`;
   const res = await fetch(url, { headers: { accept: "application/vnd.npm.install-v1+json" } });
   if (res.status === 404) return { versions: [] };
   if (!res.ok) throw new Error(`registry responded ${res.status} for ${url}`);
