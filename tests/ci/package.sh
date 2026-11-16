@@ -122,6 +122,9 @@ after_install_checks() {
 case $ID in
 debian|ubuntu)
     export DEBIAN_FRONTEND=noninteractive
+    # Ubuntu's container image tells dpkg to skip /usr/share/doc (except copyright
+    # and changelogs). A real system installs the documents: check that.
+    rm -f /etc/dpkg/dpkg.cfg.d/excludes
     apt-get update -qq
     apt-get install -y -qq --no-install-recommends build-essential debhelper lintian >/dev/null
     candidate=$(apt-cache policy nodejs | sed -n 's/^ *Candidate: *\([0-9]*\).*/\1/p')
