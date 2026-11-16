@@ -1,3 +1,10 @@
+backup-manager (0.4.1) unstable; urgency=medium
+
+  * Updated bundled libraries: tar 7.5.23, hono 4.13.18 and @hono/node-server
+    2.1.8. The npm install and the packages carry the same versions.
+
+ -- MateusBMP <bmp.mateus@gmail.com>  Mon, 16 Nov 2026 23:00:30 +0000
+
 backup-manager (0.4.0) unstable; urgency=medium
 
   * Action needed: the licence is now GPL-3.0-only (versions up to 0.3.1 stay

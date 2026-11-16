@@ -4,6 +4,12 @@ All notable changes to backup-manager. Versions follow [Semantic Versioning](htt
 The Debian package spells a pre-release with `~` (1.0.0-rc.1 is 1.0.0~rc.1); the Arch package
 drops the hyphen (1.0.0rc.1).
 
+## [0.4.1] - 2026-11-16
+
+### Changed
+- Updated bundled libraries: tar 7.5.23, hono 4.13.18 and @hono/node-server
+  2.1.8. The npm install and the packages carry the same versions.
+
 ## [0.4.0] - 2026-11-16
 
 ### Changed
@@ -84,3 +90,4 @@ drops the hyphen (1.0.0rc.1).
 [0.2.1]: https://www.npmjs.com/package/@mateusbmp/backup-manager/v/0.2.1
 [0.1.1]: https://www.npmjs.com/package/@mateusbmp/backup-manager/v/0.1.1
 [0.4.0]: https://github.com/MateusBMP/backup-manager/releases/tag/v0.4.0
+[0.4.1]: https://github.com/MateusBMP/backup-manager/releases/tag/v0.4.1
