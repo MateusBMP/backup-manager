@@ -1,0 +1,29 @@
+Source: backup-manager
+Section: admin
+Priority: optional
+Maintainer: MateusBMP <bmp.mateus@gmail.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+Homepage: https://github.com/MateusBMP/backup-manager
+Vcs-Browser: https://github.com/MateusBMP/backup-manager
+Vcs-Git: https://github.com/MateusBMP/backup-manager.git
+
+Package: backup-manager
+Architecture: all
+Depends: ${misc:Depends},
+         nodejs (>= 22),
+Recommends: mariadb-client | default-mysql-client,
+            systemd,
+Description: back up MariaDB databases and Laravel storage per environment
+ bkm backs up MariaDB databases (mariadb-dump, gzip) and the storage
+ directories of Laravel projects (tar.gz), grouped by environment, with a
+ retention policy and a manifest with checksums for every backup.
+ .
+ Everything is managed from one full-screen terminal UI. A user-level
+ systemd service runs the cron schedules, catches up on runs missed while
+ the machine was off and serves a read-only HTTP API. No root, sudo or cron
+ is needed.
+ .
+ The package carries the Node.js libraries the program uses. It needs
+ Node.js 22 or later; see README.Debian when the distribution's is older.

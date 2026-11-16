@@ -101,8 +101,10 @@ jobs:
           prefix="$(mktemp -d)"
           npm install -g --prefix "$prefix" ./mateusbmp-backup-manager-*.tgz
           bkm="$prefix/bin/bkm"
-          "$bkm" --help
-          test "$("$bkm" --version)" = "$(node -p 'require("./package.json").version')"
+          "$bkm" --help | grep -q "GNU GPL version 3 only"
+          "$bkm" --version
+          test "$("$bkm" --version | head -n 1)" = "bkm (backup-manager) $(node -p 'require("./package.json").version')"
+          "$bkm" --version | grep -q "NO WARRANTY"
           set +e
           "$bkm" -c /nonexistent/config.json doctor; code=$?
           set -e
@@ -123,10 +125,64 @@ jobs:
         with:
           name: package
           path: mateusbmp-backup-manager-*.tgz
+      - name: Release tarball (sources and the built bundle) for the distribution packages
+        run: make dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarball
+          path: backup-manager-*.tar.gz
+
+  package:
+    # Builds the .deb (Debian 12/13, Ubuntu 24.04/26.04) and the Arch package from the
+    # release tarball, lints them (lintian, namcap), installs them, runs a scheduled
+    # backup through the real daemon and removes them. Fedora has no package: the same
+    # checks run on `make install`. Node.js comes from the distribution where it is
+    # 22 or later, and from NodeSource elsewhere (tests/ci/package.sh).
+    name: package (${{ matrix.distro }})
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { distro: debian12, image: "debian:12" }
+          - { distro: debian13, image: "debian:13" }
+          - { distro: ubuntu2404, image: "ubuntu:24.04" }
+          - { distro: ubuntu2604, image: "ubuntu:26.04" }
+          - { distro: fedora44, image: "fedora:44" }
+          - { distro: arch, image: "archlinux:latest" }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: tarball
+      - name: Build, install, run and remove the package in ${{ matrix.image }}
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          mkdir -p results
+          docker run --rm -v "$PWD:/src:ro" -v "$PWD/results:/results" "$IMAGE" bash /src/tests/ci/package.sh
+      - name: Report
+        if: always()
+        env:
+          DISTRO: ${{ matrix.distro }}
+        run: |
+          log=results/package.log
+          if [ ! -s "$log" ]; then echo "::error::no package.log: the container did not run"; exit 1; fi
+          { echo "### package ($DISTRO)"; echo '```'; cat "$log"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          grep '^FAIL' "$log" | while IFS= read -r line; do echo "::error title=package ($DISTRO)::$line"; done
+          ! grep -q '^FAIL' "$log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: package-${{ matrix.distro }}
+          path: results/
+          retention-days: 14
 
   stage:
     name: stage on npm
-    needs: [lint, test, integration, build]
+    needs: [lint, test, integration, build, package]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: npm

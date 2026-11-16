@@ -1,0 +1,31 @@
+backup-manager for Debian and Ubuntu
+====================================
+
+Node.js
+-------
+bkm needs Node.js 22 or later. Ubuntu 26.04 has it. Debian 12 and 13 and
+Ubuntu 24.04 ship an older one, so the package cannot be installed there
+until a newer "nodejs" package is available, for example from NodeSource
+(https://github.com/nodesource/distributions). The project's wiki has the
+commands: https://github.com/MateusBMP/backup-manager/wiki/Installation
+
+First run
+---------
+Nothing is enabled on install and there is no system service. Run "bkm" as
+the user who will own the backups: the UI creates the config and installs a
+systemd user unit (~/.config/systemd/user/bkm.service) without root.
+
+Database backups need mariadb-dump (package mariadb-client, recommended).
+
+Upgrades and removal
+--------------------
+A running service keeps the previous code until it is restarted:
+
+    systemctl --user restart bkm
+
+Removing the package keeps every user's config, backups, job history and
+unit. To remove the unit, use Uninstall on the Service screen before removing
+the package, or afterwards:
+
+    systemctl --user disable --now bkm
+    rm ~/.config/systemd/user/bkm.service && systemctl --user daemon-reload

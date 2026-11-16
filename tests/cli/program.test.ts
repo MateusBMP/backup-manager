@@ -5,6 +5,7 @@ import { saveConfig } from "../../src/core/config/store.js";
 import type { DoctorReport } from "../../src/core/doctor.js";
 import { newJobId, readJob, writeJob } from "../../src/core/jobs/store.js";
 import { Services } from "../../src/core/services.js";
+import { helpNotice, versionText } from "../../src/legal.js";
 import { doctorText, printOptions } from "../../src/ui/print/print.js";
 import {
   fakeSystemd,
@@ -67,10 +68,17 @@ async function setup(withConfig = true) {
 describe("cli", () => {
   test("help, version, usage errors and no TTY", async () => {
     const { run } = await setup();
-    expect((await run(["--help"])).code).toBe(0);
-    const version = await run(["--version"]);
-    expect(version.code).toBe(0);
-    expect(version.out.join("")).toMatch(/\d+\.\d+\.\d+/);
+    const help = await run(["--help"]);
+    expect(help.code).toBe(0);
+    expect(help.out.join("")).toContain("show the version, copyright and licence");
+    expect(help.out.join("")).toContain(helpNotice());
+    for (const flag of ["--version", "-v"]) {
+      const version = await run([flag]);
+      expect(version.code).toBe(0);
+      expect(version.out.join("").trim()).toBe(versionText("bkm"));
+    }
+    // A subcommand's help stays short: the notice is on the main help only.
+    expect((await run(["doctor", "--help"])).out.join("")).not.toContain("NO WARRANTY");
     expect((await run(["frobnicate"])).code).toBe(EXIT_USAGE);
     expect((await run(["doctor", "--bogus"])).code).toBe(EXIT_USAGE);
     const noTty = await run([]);

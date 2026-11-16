@@ -11,7 +11,7 @@
     "cli",
     "tui"
   ],
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "author": "MateusBMP",
   "type": "module",
   "repository": {
@@ -30,7 +30,9 @@
     "config.schema.json",
     "config.example.json",
     "README.md",
-    "LICENSE"
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
   ],
   "engines": {
     "node": ">=22"

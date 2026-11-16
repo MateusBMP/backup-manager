@@ -12,6 +12,7 @@ import type { Config, Database } from "../core/config/schema.js";
 import type { JobRecord } from "../core/jobs/store.js";
 import { nextRun } from "../core/schedule.js";
 import type { Services } from "../core/services.js";
+import { LICENSE_ID, LICENSE_URL } from "../legal.js";
 import { VERSION } from "../version.js";
 
 export interface ApiOptions {
@@ -508,6 +509,7 @@ export function createApi(options: ApiOptions) {
       title: "backup-manager API",
       version: VERSION,
       description: "Read-only view of environments, backups and jobs.",
+      license: { name: LICENSE_ID, url: LICENSE_URL },
     },
   });
   app.get("/docs", swaggerUI({ url: "/openapi.json" }));

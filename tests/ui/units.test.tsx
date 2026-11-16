@@ -5,6 +5,7 @@ import { describe, expect, test } from "vitest";
 import { emptyConfig } from "../../src/core/config/defaults.js";
 import { type Field, Form, type Values } from "../../src/ui/components/Form.js";
 import { Footer } from "../../src/ui/components/Frame.js";
+import { HELP, HELP_HEIGHT } from "../../src/ui/components/Overlay.js";
 import { TextField } from "../../src/ui/components/TextField.js";
 import { type KeyHint, Provider, useHints } from "../../src/ui/context.js";
 import { itemProgress, jobFraction } from "../../src/ui/hooks/useJobEvents.js";
@@ -207,6 +208,17 @@ describe("ui helpers", () => {
     expect(nextLabel(new Date(2026, 0, 3, 15, 5), now)).toBe("1/3 15:05");
     expect(menuIndex({ name: "job-live", id: "x" })).toBe(3);
     expect(menuIndex({ name: "onboarding" })).toBe(0);
+  });
+});
+
+describe("help overlay", () => {
+  test("every entry fits in one row, so HELP_HEIGHT is exact", () => {
+    // 64 columns: 58 inside the border and padding, 18 of them for the key.
+    for (const [key, label] of HELP) {
+      expect(key.length).toBeLessThanOrEqual(17);
+      expect(label.length).toBeLessThanOrEqual(40);
+    }
+    expect(HELP_HEIGHT).toBe(HELP.length + 11);
   });
 });
 

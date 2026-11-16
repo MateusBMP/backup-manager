@@ -180,7 +180,10 @@ describe("api", () => {
     expect(JSON.stringify(jobs.body)).not.toContain("configPath");
 
     const docs = await get("/openapi.json");
-    expect(docs.body).toMatchObject({ openapi: "3.1.0" });
+    expect(docs.body).toMatchObject({
+      openapi: "3.1.0",
+      info: { license: { name: "GPL-3.0-only", url: "https://www.gnu.org/licenses/gpl-3.0.html" } },
+    });
     expect(JSON.stringify(docs.body)).toContain("/environments/{env}/backups/{id}");
     expect(JSON.stringify(docs.body)).toContain("/environments/{env}/projects/{project}/backups");
   });

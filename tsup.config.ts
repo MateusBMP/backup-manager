@@ -9,5 +9,11 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   splitting: false,
-  banner: { js: "#!/usr/bin/env node" },
+  banner: {
+    js: [
+      "#!/usr/bin/env node",
+      "// backup-manager - Copyright (C) 2026 MateusBMP",
+      "// SPDX-License-Identifier: GPL-3.0-only (see LICENSE and NOTICE)",
+    ].join("\n"),
+  },
 });

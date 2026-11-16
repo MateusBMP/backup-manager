@@ -1,0 +1,26 @@
+# backup-manager has no system service: each user installs a systemd user unit
+# (~/.config/systemd/user/bkm.service) from the UI. The package never touches it.
+
+post_install() {
+  cat <<'MSG'
+==> backup-manager is installed. Run 'bkm' as the user who will own the
+    backups: the UI creates the config and installs the service (no root).
+    Database backups need mariadb-dump: pacman -S mariadb-clients
+MSG
+}
+
+post_upgrade() {
+  cat <<'MSG'
+==> A running bkm service keeps the previous code until it is restarted:
+      systemctl --user restart bkm
+MSG
+}
+
+post_remove() {
+  cat <<'MSG'
+==> Configs, backups and job history are kept. A user who installed the
+    service still has its unit; they remove it with:
+      systemctl --user disable --now bkm
+      rm ~/.config/systemd/user/bkm.service && systemctl --user daemon-reload
+MSG
+}

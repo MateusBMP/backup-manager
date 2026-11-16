@@ -1,0 +1,37 @@
+# Maintainer: MateusBMP
+#
+# Packages a release tarball of this checkout (the working tree, with bundle/
+# built: the program and its runtime dependencies):
+#
+#   make arch-pkg                      # make dist + makepkg, from the top of the tree
+#   sudo pacman -U packaging/arch/backup-manager-*.pkg.tar.zst
+#
+# Nothing is built here: the tarball already holds the JavaScript, so the
+# package needs neither npm nor the network. The licences of the bundled Node.js
+# libraries (MIT, ISC, BlueOak-1.0.0) are installed next to each library.
+
+pkgname=backup-manager
+pkgver=0.3.1
+pkgrel=1
+pkgdesc="Back up MariaDB databases and Laravel storage per environment: terminal UI, user-level systemd scheduler, read-only HTTP API"
+arch=('any')
+url="https://github.com/MateusBMP/backup-manager"
+license=('GPL-3.0-only' 'MIT' 'ISC' 'BlueOak-1.0.0')
+depends=('nodejs>=22')
+makedepends=('make')
+optdepends=('mariadb-clients: mariadb-dump and mariadb, for database backups'
+            'systemd: the user service that runs the schedules and the HTTP API')
+options=('!strip')
+install=backup-manager.install
+source=("$pkgname-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$pkgname-$pkgver"
+  make build
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  make install-files DESTDIR="$pkgdir"
+}

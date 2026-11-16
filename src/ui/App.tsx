@@ -6,7 +6,14 @@ import { ConfigConflictError } from "../core/config/store.js";
 import type { ServiceStatus } from "../core/service/manager.js";
 import type { Services } from "../core/services.js";
 import { Footer, Header, SIDEBAR_WIDTH, Sidebar, TabBar, WIDE } from "./components/Frame.js";
-import { ConfirmBody, HelpBody, Modal, Toasts, TooSmall } from "./components/Overlay.js";
+import {
+  ConfirmBody,
+  HELP_HEIGHT,
+  HelpBody,
+  Modal,
+  Toasts,
+  TooSmall,
+} from "./components/Overlay.js";
 import {
   type AppContextValue,
   type ConfirmOptions,
@@ -367,7 +374,14 @@ export function App(props: AppProps) {
         />
         <Toasts theme={theme} toasts={toasts} now={now} />
         {modal?.kind === "help" && (
-          <Modal theme={theme} width={64} columns={size.columns} rows={size.rows} title="Keys">
+          <Modal
+            theme={theme}
+            width={64}
+            columns={size.columns}
+            rows={size.rows}
+            title="Keys"
+            height={HELP_HEIGHT}
+          >
             <HelpBody theme={theme} />
           </Modal>
         )}

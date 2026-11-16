@@ -8,6 +8,7 @@ import { loadConfig } from "../../src/core/config/load.js";
 import { saveConfig } from "../../src/core/config/store.js";
 import { getJobCommand, setJobCommand } from "../../src/core/jobs/runner.js";
 import { Services } from "../../src/core/services.js";
+import { uiNotice } from "../../src/legal.js";
 import { App } from "../../src/ui/App.js";
 import { makeTheme } from "../../src/ui/theme.js";
 import {
@@ -356,6 +357,9 @@ describe("ui", () => {
     await ui.keys("?");
     await ui.until("Keys");
     expect(ui.frame()).toContain("jump to a menu entry");
+    expect(ui.frame()).toContain(uiNotice()[0]);
+    expect(ui.frame()).toContain("GPL-3.0-only · NO WARRANTY");
+    expect(ui.frame()).toContain("press any key to close");
     await ui.keys("x");
     await waitFor(() => !ui.frame().includes("jump to a menu entry"));
     await ui.keys(KEY.tab);

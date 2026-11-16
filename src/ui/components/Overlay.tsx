@@ -1,5 +1,6 @@
 import { Box, Text } from "ink";
 import type { ReactNode } from "react";
+import { uiNotice } from "../../legal.js";
 import type { ConfirmOptions, Toast } from "../context.js";
 import type { Theme } from "../theme.js";
 
@@ -11,6 +12,7 @@ export function Modal({
   title,
   children,
   danger,
+  height,
 }: {
   theme: Theme;
   width: number;
@@ -19,12 +21,15 @@ export function Modal({
   title: string;
   children: ReactNode;
   danger?: boolean;
+  /** Rows the modal needs, border included: a tall modal moves up so that it fits. */
+  height?: number;
 }) {
   const w = Math.min(width, columns - 4);
+  const quarter = Math.max(1, Math.floor(rows / 4));
   return (
     <Box
       position="absolute"
-      top={Math.max(1, Math.floor(rows / 4))}
+      top={height ? Math.max(0, Math.min(quarter, rows - height)) : quarter}
       left={Math.max(0, Math.floor((columns - w) / 2))}
       width={w}
     >
@@ -71,15 +76,16 @@ export function ConfirmBody({
   );
 }
 
-const HELP: [string, string][] = [
+/** Each label must fit in one row (40 columns): `HELP_HEIGHT` counts one row per entry. */
+export const HELP: [string, string][] = [
   ["↑↓ / j k", "move in lists"],
   ["g G · Home End", "first / last"],
   ["PgUp PgDn", "page"],
   ["⏎", "open / select"],
   ["Esc", "back"],
-  ["Ctrl/Alt + ← → ↓", "zones: sidebar · content · buttons (↑ back)"],
+  ["Ctrl/Alt + ← → ↓", "zones: sidebar/content/buttons (↑ back)"],
   ["←→ ⏎ (buttons)", "pick and press a button: save, add, run…"],
-  ["Tab", "switch sidebar / content (next field in forms)"],
+  ["Tab", "sidebar / content (next field in forms)"],
   ["1–9", "jump to a menu entry"],
   ["n · e · s", "new backup · environments · service"],
   ["Ctrl-S", "save a form (or its save button)"],
@@ -87,7 +93,11 @@ const HELP: [string, string][] = [
   ["q", "quit (jobs keep running)"],
 ];
 
+/** Rows of the help modal: border, title, the keys, the two notes and the licence notice. */
+export const HELP_HEIGHT = HELP.length + 11;
+
 export function HelpBody({ theme }: { theme: Theme }) {
+  const [about, licence] = uiNotice();
   return (
     <Box flexDirection="column" marginTop={1}>
       {HELP.map(([key, label]) => (
@@ -104,6 +114,10 @@ export function HelpBody({ theme }: { theme: Theme }) {
         <Text color={theme.muted}>
           Backups started here run detached: closing the UI or SSH does not stop them.
         </Text>
+      </Box>
+      <Box marginTop={1} flexDirection="column">
+        <Text color={theme.muted}>{about}</Text>
+        <Text color={theme.muted}>{licence}</Text>
       </Box>
       <Text color={theme.muted}>press any key to close</Text>
     </Box>

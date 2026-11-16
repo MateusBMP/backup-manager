@@ -6,8 +6,8 @@ import { EXIT_FAILURE, EXIT_OK, executeJob } from "../core/jobs/runner.js";
 import { resolveConfigPath } from "../core/paths.js";
 import type { CommandRunner } from "../core/service/systemctl.js";
 import { Services } from "../core/services.js";
+import { helpNotice, versionText } from "../legal.js";
 import { doctorText, type PrintOptions, printOptions } from "../ui/print/print.js";
-import { VERSION } from "../version.js";
 
 export const EXIT_USAGE = 2;
 
@@ -49,7 +49,8 @@ export async function main(argv: string[], deps: CliDeps = {}): Promise<number> 
 
   const program = new Command("bkm")
     .description("Back up MariaDB databases and Laravel storage per environment.")
-    .version(VERSION, "-v, --version")
+    .version(versionText("bkm"), "-v, --version", "show the version, copyright and licence")
+    .addHelpText("after", () => `\n${helpNotice()}`)
     .option(
       "-c, --config <path>",
       "config file (default: $BKM_CONFIG or ~/.config/backup-manager/config.json)",

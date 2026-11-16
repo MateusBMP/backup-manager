@@ -1,0 +1,24 @@
+#!/usr/bin/make -f
+# The package is built from a release tarball (make dist), which carries
+# bundle/: the JavaScript and its runtime dependencies. Nothing is compiled
+# here and no network is used.
+
+%:
+	dh $@
+
+# `make clean` would delete the prebuilt bundle.
+override_dh_auto_clean:
+
+override_dh_auto_build:
+	$(MAKE) build
+
+# The test suite needs the development dependencies; CI runs it on every push.
+override_dh_auto_test:
+
+# Licences go to debian/copyright, documents to debian/backup-manager.docs.
+override_dh_auto_install:
+	$(MAKE) install-files DESTDIR=$(CURDIR)/debian/backup-manager LICENSEDIR= DOCDIR=
+
+# dh_fixperms takes the execute bit from every .js file; /usr/bin/bkm links to this one.
+execute_after_dh_fixperms:
+	chmod 0755 debian/backup-manager/usr/lib/backup-manager/dist/cli.js
