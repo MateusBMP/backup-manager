@@ -4,6 +4,39 @@ All notable changes to backup-manager. Versions follow [Semantic Versioning](htt
 The Debian package spells a pre-release with `~` (1.0.0-rc.1 is 1.0.0~rc.1); the Arch package
 drops the hyphen (1.0.0rc.1).
 
+## [0.4.0] - 2026-11-16
+
+### Changed
+- **Action needed:** the licence is now GPL-3.0-only (versions up to 0.3.1 stay
+  MIT). Using the program is unaffected; if you redistribute or modify it,
+  read `LICENSE` and `NOTICE` first.
+- `bkm --version` prints the version, the copyright and the licence in the GNU
+  style, on several lines. A script that reads the version should take the
+  last word of the first line.
+- `bkm --help` ends with the copyright, the licence and a link to the
+  documentation.
+- The documentation moved from the README to the wiki; the README keeps the
+  basics. The table of configuration keys is generated from the schema.
+
+### Added
+- The help overlay (`?`) shows the version, the copyright and the licence.
+- API: the OpenAPI document names the licence.
+- `SECURITY.md`, with how to report a vulnerability, and this changelog.
+
+### Fixed
+- The help overlay moves up on short terminals so that its last line stays on
+  screen.
+
+### Packaging
+- Packages for Debian 12 and 13, Ubuntu 24.04 and 26.04 (`.deb`) and Arch
+  Linux, and a release tarball with `make install` for Fedora and other
+  systems. They carry the program already built with its dependencies, so
+  installing needs Node.js 22 or later but not npm.
+- Every package installs the licence, the notices and the licence texts of the
+  bundled libraries (`THIRD-PARTY-LICENSES.txt`).
+- Nothing is enabled on install: each user still installs the service from the
+  UI, without root.
+
 ## [0.3.1] - 2026-11-10
 
 ### Fixed
@@ -50,3 +83,4 @@ drops the hyphen (1.0.0rc.1).
 [0.2.2]: https://www.npmjs.com/package/@mateusbmp/backup-manager/v/0.2.2
 [0.2.1]: https://www.npmjs.com/package/@mateusbmp/backup-manager/v/0.2.1
 [0.1.1]: https://www.npmjs.com/package/@mateusbmp/backup-manager/v/0.1.1
+[0.4.0]: https://github.com/MateusBMP/backup-manager/releases/tag/v0.4.0

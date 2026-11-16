@@ -1,6 +1,6 @@
 {
   "name": "@mateusbmp/backup-manager",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Back up MariaDB databases and Laravel storage per environment, with a full-screen terminal UI and a user-level systemd scheduler.",
   "keywords": [
     "backup",
@@ -54,7 +54,8 @@
     "verify": "npm run schema:check && npm run typecheck && npm run lint && npm run coverage && npm run build",
     "prepare": "husky || true",
     "prepack": "npm run build",
-    "release:check": "tsx scripts/release-check.ts"
+    "release:check": "tsx scripts/release-check.ts",
+    "release:bump": "tsx scripts/release-bump.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,mjs,json,jsonc}": "biome check --write --no-errors-on-unmatched"

@@ -11,7 +11,7 @@
 # libraries (MIT, ISC, BlueOak-1.0.0) are installed next to each library.
 
 pkgname=backup-manager
-pkgver=0.3.1
+pkgver=0.4.0
 pkgrel=1
 pkgdesc="Back up MariaDB databases and Laravel storage per environment: terminal UI, user-level systemd scheduler, read-only HTTP API"
 arch=('any')
